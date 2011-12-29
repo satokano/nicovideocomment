@@ -7,14 +7,17 @@ require 'logger'
 require 'rexml/document'
 require 'socket'
 require 'sqlite3'
+require 'psych'
+require 'yaml'
 
+config = YAML.load_file("config.yaml")
 # === configure
 mycommlist = ["co1247938", "co1063186", "co1268500", "co1004464", "co1233486", "co1219623", "co555044", "co1234033", "co387509", "co521674", "co1198302",
-  "co1116209", "co625201", "co1157798"]
-login_mail = "satokano@gmail.com"
-login_password = "kaoru5th"
-usebrowsercookie = true
-dbfile = "C:\\Users\\okano\\AppData\\Local\\Google\\Chrome\\User Data\\Default\\Cookies" # Chrome
+  "co1116209", "co625201", "co1157798", "co1379188", "co1190806", "co1329172", "co1356736", "co1171944", "co1258342", "co1395104", "co1251188", "co1136133", "co1362710", "co1389548", "co444979", "co1378074", "co351386", "co1419168", "co478298", "co1334900", "co1295356", "co1329481"]
+login_mail = config["login_mail"]
+login_password = config["login_password"]
+usebrowsercookie = config["usebrowsercookie"] 
+dbfile = config["dbfile"] # Chrome
 alert_log = "alert.log"
 comment_log = "comment.log"
 children = 30
@@ -23,6 +26,11 @@ children = 30
 browsercookie = ""
 # ischildthread = false
 agent = Mechanize.new
+
+# FreeBSD8ではSSLエラーがでた。
+# デフォルトで/etc/ssl/cert.pemが使われるので、そこからシンボリックリンクを張って回避
+# agent.ca_file = "/usr/local/share/certs/ca-root-nss.crt"
+
 alog = Logger.new(alert_log, 5)
 alog.level = Logger::INFO
 clog = Logger.new(comment_log, 10)
@@ -163,7 +171,11 @@ sock.each("\0") do |line|
 		end
 		clog.info line.tosjis
         puts "> #{line}".tosjis
-      end
+        if line =~ /\/disconnect/ then
+          puts "**** DISCONNECT ****\n"
+          break
+        end
+      end # of sock2.each
     end # of Thread.new() do || ...
   end # of 
   
