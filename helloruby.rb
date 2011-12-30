@@ -148,10 +148,8 @@ sock.each("\0") do |line|
   if mycommlist.include?(communityid) then
 	alog.warn("**** HIT MYCOMMLIST: #{communityid}")
   end
-  
+ 
   if comment_threads.size < children && line =~ /<chat/ && !comment_threads.has_key?(liveid) then
-    # ag = agent
-    # lid = liveid
 	
     #### getplayerstatusでコメントサーバのIP,port,threadidを取ってくる
     agent.get("http://live.nicovideo.jp/api/getplayerstatus?v=lv#{liveid}")
@@ -176,8 +174,8 @@ sock.each("\0") do |line|
     comment_threads[liveid] = Thread.new(agent, liveid, comm2server, comm2port, comm2thread) do |ag, lid, cserv, cport, cth|
       dlog.debug("#{comment_threads.size}: #{comment_threads.keys.sort}")
 
-      alog.info("connect to: #{cserv}: #{cport} thread=#{cth}")
-      sock2 = TCPSocket.open(cserver, cport)
+      sock2 = TCPSocket.open(cserv, cport) # :external_encoding => "Windows-31J"
+      alog.info("connect to: #{cserv}:#{cport} thread=#{cth}")
 
       dlog.debug("sock2.external_encoding: #{sock2.external_encoding.to_s}")
       dlog.debug("sock2.internal_encoding: #{sock2.internal_encoding.to_s}")
@@ -191,9 +189,18 @@ sock.each("\0") do |line|
           line = line[0..-2]
         end
 
+        line.force_encoding("Windows-31J")
+
         clog.info line
-        #commentonly = REXML::XPath.first(line, "/chat").text
         puts "> #{line}\n"
+
+        line.encode!("UTF-8")
+
+        if line =~ /chat/ then
+          puts "line like chat\n"
+          commentonly = REXML::XPath.first(line, "//chat").text
+          puts ">> #{commentonly}\n"
+        end
 
         if line =~ /\/disconnect/ then
           puts "**** DISCONNECT: #{lid} ****\n"
