@@ -64,7 +64,7 @@ if usebrowsercookie then
 
     # [12957760714289143, ".nicovideo.jp", "user_session", "user_session_1925160_454899025913333356", "/", 12960352716000000, 0, 0, 12957978849585587]
 	browsercookie = row['name'] + "=" + row['value']+ "; expires=" + exptime_utc.strftime("%a, %d-%b-%Y %H:%M:%S GMT") + "; path=" + row['path'] + "; domain=" + row['host_key'] + ";"
-	puts "[cookie_get] " + browsercookie
+	puts "[cookie_get] #{browsercookie}\n"
   end
 end
 
@@ -75,44 +75,44 @@ if usebrowsercookie then
 	agent.cookie_jar.add(nicovideo_jp_uri, c)
   }
 else
-  print "[cookie_get] https login secure.nicolive.jp"
+  print "[cookie_get] https login secure.nicolive.jp\n"
   agent.post('https://secure.nicovideo.jp/secure/login?site=nicolive', {:next_url => "", :mail => login_mail, :password => login_password})
 
   if agent.page.code != "200" then
-	puts "ログイン失敗(001)".tosjis
-	p agent.page.body.tosjis
+	puts "ログインエラー(001)\n"
+	p agent.page.body
 	abort
   end
 end
 
-puts agent.cookie_jar.jar
+# puts agent.cookie_jar.jar
 
 #### ログインしてticket取得
 puts "[login] nicolive_antenna"
 agent.post('https://secure.nicovideo.jp/secure/login?site=nicolive_antenna', {:mail => login_mail, :password => login_password})
 
 if agent.page.code != "200" then
-  abort "ログイン失敗(001)".tosjis
+  abort "ログインエラー(001)\n"
 end
 agent.cookie_jar.save_as('mech_cookie.yaml')
 
 xmldoc = REXML::Document.new agent.page.body
 
 if REXML::XPath.first(xmldoc, "//nicovideo_user_response/attribute::status").value !~ /ok/ then
-  abort "ログイン失敗(002)".tosjis
+  abort "ログインエラー(002)\n"
 end
 ticketstr = REXML::XPath.first(xmldoc, "//ticket").text
 
 #### getalertstatus まずはアラートサーバのIP、ポートをもらってくる
 agent.post('http://live.nicovideo.jp/api/getalertstatus', {:ticket => ticketstr})
 if agent.page.code != "200" then
-  abort "getalertstatus失敗(003)".tosjis
+  abort "getalertstatusエラー(003)\n"
 end
 
 xmldoc = REXML::Document.new agent.page.body
 if REXML::XPath.first(xmldoc, "//getalertstatus/attribute::status").value !~ /ok/ then
-  p agent.page.body.tosjis
-  abort "getalertstatus失敗(004)".tosjis
+  p agent.page.body
+  abort "getalertstatusエラー(004)\n"
 end
 
 REXML::XPath.each(xmldoc, "//community_id") {|ele|
@@ -124,7 +124,7 @@ commserver = REXML::XPath.first(xmldoc, "/getalertstatus/ms/addr").text
 commport = REXML::XPath.first(xmldoc, "/getalertstatus/ms/port").text
 commthread = REXML::XPath.first(xmldoc, "/getalertstatus/ms/thread").text
 print("[getalertstatus] connect to: ", commserver, ":", commport, " , thread=", commthread, "\n")
-dlog.debug("getalertstatus commserver=#{commserver} commport=#{commport} commthread=#{commthread}");
+alog.info("getalertstatus commserver=#{commserver} commport=#{commport} commthread=#{commthread}");
 
 #### アラートサーバへの接続
 sock = TCPSocket.open(commserver, commport)
@@ -146,7 +146,7 @@ sock.each("\0") do |line|
   alog.info(line)
   
   if mycommlist.include?(communityid) then
-	puts "★ #{communityid}".tosjis
+	alog.warn("**** HIT MYCOMMLIST: #{communityid}")
   end
   
   if comment_threads.size < children && line =~ /<chat/ && !comment_threads.has_key?(liveid) then
@@ -158,7 +158,7 @@ sock.each("\0") do |line|
       #### getplayerstatusでコメントサーバのIP,port,threadidを取ってくる
       ag.get("http://live.nicovideo.jp/api/getplayerstatus?v=lv#{lid}")
       if ag.page.code != "200" then
-        abort "getplayerstatus失敗(005)(lv#{lid})".tosjis
+        abort "getplayerstatusエラー(005)(lv#{lid})\n"
       end
       xmldoc = REXML::Document.new ag.page.body
 
@@ -166,8 +166,7 @@ sock.each("\0") do |line|
         # コミュ限とか
         # <?xml version="1.0" encoding="utf-8"?>
         # <getplayerstatus status="fail" time="1313947751"><error><code>require_community_member</code></error></getplayerstatus>
-        puts "getplayerstatus失敗(006)(lv#{lid})".tosjis
-        puts ag.page.body.tosjis
+        alog.error("getplayerstatusエラー(006)(lv#{lid}) エラーコード: #{REXML::XPath.first(xmldoc, "//getplayerstatus/error/code").text}")
         next # Thread.newのdoブロックのみ抜けたい。ブロック付きメソッド呼び出しのブロックのみ処理終了するにはnext
       end
 
@@ -175,8 +174,11 @@ sock.each("\0") do |line|
       comm2server = REXML::XPath.first(xmldoc, "/getplayerstatus/ms/addr").text
       comm2port = REXML::XPath.first(xmldoc, "/getplayerstatus/ms/port").text
       comm2thread = REXML::XPath.first(xmldoc, "/getplayerstatus/ms/thread").text
-      print("connect to: ", comm2server, ":", comm2port, " , thread=", comm2thread, "\n")
+      alog.info("connect to: #{comm2server}: #{comm2port} thread=#{comm2thread}")
       sock2 = TCPSocket.open(comm2server, comm2port)
+
+      dlog.debug("sock2.external_encoding: #{sock2.external_encoding.to_s}")
+      dlog.debug("sock2.internal_encoding: #{sock2.internal_encoding.to_s}")
 
       #### 最初にこの合図を送信してやる
       sock2.print "<thread thread=\"#{comm2thread}\" version=\"20061206\" res_from=\"-100\"/>\0"
@@ -187,13 +189,16 @@ sock.each("\0") do |line|
           line = line[0..-2]
         end
 
-        clog.info line.tosjis
-        puts "> #{line}".tosjis
+        clog.info line
+        commentonly = REXML::XPath.first(line, "/chat").text
+        puts "> #{commentonly}\n"
 
         if line =~ /\/disconnect/ then
           puts "**** DISCONNECT: #{lid} ****\n"
-          # next
+          alog.info("disconnect: #{lid}")
           sock2.close
+          comment_threads.delete(lid)
+          # next
         end
       end # of sock2.each
 
