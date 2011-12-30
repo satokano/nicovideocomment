@@ -152,36 +152,38 @@ sock.each("\0") do |line|
   if comment_threads.size < children && line =~ /<chat/ && !comment_threads.has_key?(liveid) then
     # ag = agent
     # lid = liveid
-    comment_threads[liveid] = Thread.new(agent, liveid) do |ag, lid|
+	
+    #### getplayerstatusでコメントサーバのIP,port,threadidを取ってくる
+    agent.get("http://live.nicovideo.jp/api/getplayerstatus?v=lv#{liveid}")
+    if agent.page.code != "200" then
+      abort "getplayerstatusエラー(005)(lv#{liveid})\n"
+    end
+    xmldoc = REXML::Document.new agent.page.body
+
+    if REXML::XPath.first(xmldoc, "//getplayerstatus/attribute::status").value !~ /ok/ then
+      # コミュ限とか
+      # <?xml version="1.0" encoding="utf-8"?>
+      # <getplayerstatus status="fail" time="1313947751"><error><code>require_community_member</code></error></getplayerstatus>
+      alog.error("getplayerstatusエラー(006)(lv#{liveid}) エラーコード: #{REXML::XPath.first(xmldoc, "//getplayerstatus/error/code").text}")
+      next # sock.each("\0") do |line| の次回に進む
+    end
+	
+    #### コメントサーバへ接続
+    comm2server = REXML::XPath.first(xmldoc, "/getplayerstatus/ms/addr").text
+    comm2port = REXML::XPath.first(xmldoc, "/getplayerstatus/ms/port").text
+    comm2thread = REXML::XPath.first(xmldoc, "/getplayerstatus/ms/thread").text
+	
+    comment_threads[liveid] = Thread.new(agent, liveid, comm2server, comm2port, comm2thread) do |ag, lid, cserv, cport, cth|
       dlog.debug("#{comment_threads.size}: #{comment_threads.keys.sort}")
 
-      #### getplayerstatusでコメントサーバのIP,port,threadidを取ってくる
-      ag.get("http://live.nicovideo.jp/api/getplayerstatus?v=lv#{lid}")
-      if ag.page.code != "200" then
-        abort "getplayerstatusエラー(005)(lv#{lid})\n"
-      end
-      xmldoc = REXML::Document.new ag.page.body
-
-      if REXML::XPath.first(xmldoc, "//getplayerstatus/attribute::status").value !~ /ok/ then
-        # コミュ限とか
-        # <?xml version="1.0" encoding="utf-8"?>
-        # <getplayerstatus status="fail" time="1313947751"><error><code>require_community_member</code></error></getplayerstatus>
-        alog.error("getplayerstatusエラー(006)(lv#{lid}) エラーコード: #{REXML::XPath.first(xmldoc, "//getplayerstatus/error/code").text}")
-        next # Thread.newのdoブロックのみ抜けたい。ブロック付きメソッド呼び出しのブロックのみ処理終了するにはnext
-      end
-
-      #### コメントサーバへ接続
-      comm2server = REXML::XPath.first(xmldoc, "/getplayerstatus/ms/addr").text
-      comm2port = REXML::XPath.first(xmldoc, "/getplayerstatus/ms/port").text
-      comm2thread = REXML::XPath.first(xmldoc, "/getplayerstatus/ms/thread").text
-      alog.info("connect to: #{comm2server}: #{comm2port} thread=#{comm2thread}")
-      sock2 = TCPSocket.open(comm2server, comm2port)
+      alog.info("connect to: #{cserv}: #{cport} thread=#{cth}")
+      sock2 = TCPSocket.open(cserver, cport)
 
       dlog.debug("sock2.external_encoding: #{sock2.external_encoding.to_s}")
       dlog.debug("sock2.internal_encoding: #{sock2.internal_encoding.to_s}")
 
       #### 最初にこの合図を送信してやる
-      sock2.print "<thread thread=\"#{comm2thread}\" version=\"20061206\" res_from=\"-100\"/>\0"
+      sock2.print "<thread thread=\"#{cth}\" version=\"20061206\" res_from=\"-100\"/>\0"
 
       #### 受信待ち
       sock2.each("\0") do |line|
@@ -190,8 +192,8 @@ sock.each("\0") do |line|
         end
 
         clog.info line
-        commentonly = REXML::XPath.first(line, "/chat").text
-        puts "> #{commentonly}\n"
+        #commentonly = REXML::XPath.first(line, "/chat").text
+        puts "> #{line}\n"
 
         if line =~ /\/disconnect/ then
           puts "**** DISCONNECT: #{lid} ****\n"
