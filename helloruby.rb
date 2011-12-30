@@ -21,7 +21,7 @@ dbfile = config["dbfile"] # Chrome
 alert_log = "alert.log"
 comment_log = "comment.log"
 debug_log = "debug.log"
-children = 5500
+children = config["children"]
 # === configure end
 
 browsercookie = ""
