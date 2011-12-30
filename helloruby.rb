@@ -123,7 +123,7 @@ print "[getalertstatus] OK\n"
 commserver = REXML::XPath.first(xmldoc, "/getalertstatus/ms/addr").text
 commport = REXML::XPath.first(xmldoc, "/getalertstatus/ms/port").text
 commthread = REXML::XPath.first(xmldoc, "/getalertstatus/ms/thread").text
-print("[getalertstatus] connect to: ", commserver, ":", commport, " , thread=", commthread, "\n")
+print("[getalertstatus] connect to: #{commserver}:#{commport} thread=#{commthread}\n")
 alog.info("getalertstatus commserver=#{commserver} commport=#{commport} commthread=#{commthread}");
 
 #### アラートサーバへの接続
