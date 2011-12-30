@@ -69,7 +69,7 @@ if usebrowsercookie then
 end
 
 if usebrowsercookie then
-  print "[cookie_set] usebrowsercookie "
+  print "[cookie_set] usebrowsercookie \n"
   nicovideo_jp_uri = URI.parse("https://secure.nicovideo.jp/") # 完全なURLを入れておく
   Mechanize::Cookie.parse(nicovideo_jp_uri, browsercookie) {|c|
 	agent.cookie_jar.add(nicovideo_jp_uri, c)
