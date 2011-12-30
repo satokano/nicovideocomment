@@ -20,7 +20,8 @@ usebrowsercookie = config["usebrowsercookie"]
 dbfile = config["dbfile"] # Chrome
 alert_log = "alert.log"
 comment_log = "comment.log"
-children = 30
+debug_log = "debug.log"
+children = 5500
 # === configure end
 
 browsercookie = ""
@@ -35,8 +36,12 @@ alog = Logger.new(alert_log, 5)
 alog.level = Logger::INFO
 clog = Logger.new(comment_log, 10)
 clog.level = Logger::INFO
-comment_threads = []
+dlog = Logger.new(debug_log, 3)
+dlog.level = Logger::DEBUG
 
+comment_threads = Hash.new()
+
+#### Cookie準備
 if usebrowsercookie then
   # Chrome
   sql = "select * from cookies where host_key like '%nicovideo.jp' and name = 'user_session';"
@@ -82,6 +87,7 @@ end
 
 puts agent.cookie_jar.jar
 
+#### ログインしてticket取得
 puts "[login] nicolive_antenna"
 agent.post('https://secure.nicovideo.jp/secure/login?site=nicolive_antenna', {:mail => login_mail, :password => login_password})
 
@@ -97,6 +103,7 @@ if REXML::XPath.first(xmldoc, "//nicovideo_user_response/attribute::status").val
 end
 ticketstr = REXML::XPath.first(xmldoc, "//ticket").text
 
+#### getalertstatus まずはアラートサーバのIP、ポートをもらってくる
 agent.post('http://live.nicovideo.jp/api/getalertstatus', {:ticket => ticketstr})
 if agent.page.code != "200" then
   abort "getalertstatus失敗(003)".tosjis
@@ -117,7 +124,9 @@ commserver = REXML::XPath.first(xmldoc, "/getalertstatus/ms/addr").text
 commport = REXML::XPath.first(xmldoc, "/getalertstatus/ms/port").text
 commthread = REXML::XPath.first(xmldoc, "/getalertstatus/ms/thread").text
 print("[getalertstatus] connect to: ", commserver, ":", commport, " , thread=", commthread, "\n")
+dlog.debug("getalertstatus commserver=#{commserver} commport=#{commport} commthread=#{commthread}");
 
+#### アラートサーバへの接続
 sock = TCPSocket.open(commserver, commport)
 sock.print "<thread thread=\"#{commthread}\" version=\"20061206\" res_from=\"-1\">\0"
 sock.each("\0") do |line|
@@ -140,10 +149,13 @@ sock.each("\0") do |line|
 	puts "★ #{communityid}".tosjis
   end
   
-  if comment_threads.size < children && line =~ /<chat/ then
-    ag = agent
-    lid = liveid
-    comment_threads << Thread.new(agent, liveid) do |ag, lid|
+  if comment_threads.size < children && line =~ /<chat/ && !comment_threads.has_key?(liveid) then
+    # ag = agent
+    # lid = liveid
+    comment_threads[liveid] = Thread.new(agent, liveid) do |ag, lid|
+      dlog.debug("#{comment_threads.size}: #{comment_threads.keys.sort}")
+
+      #### getplayerstatusでコメントサーバのIP,port,threadidを取ってくる
       ag.get("http://live.nicovideo.jp/api/getplayerstatus?v=lv#{lid}")
       if ag.page.code != "200" then
         abort "getplayerstatus失敗(005)(lv#{lid})".tosjis
@@ -151,32 +163,41 @@ sock.each("\0") do |line|
       xmldoc = REXML::Document.new ag.page.body
 
       if REXML::XPath.first(xmldoc, "//getplayerstatus/attribute::status").value !~ /ok/ then
-		# コミュ限とか
-		# <?xml version="1.0" encoding="utf-8"?>
-		# <getplayerstatus status="fail" time="1313947751"><error><code>require_community_member</code></error></getplayerstatus>
+        # コミュ限とか
+        # <?xml version="1.0" encoding="utf-8"?>
+        # <getplayerstatus status="fail" time="1313947751"><error><code>require_community_member</code></error></getplayerstatus>
         puts "getplayerstatus失敗(006)(lv#{lid})".tosjis
         puts ag.page.body.tosjis
-        return # Thread.newのdoブロックのみ抜けたい。。。returnで正しいか？
+        next # Thread.newのdoブロックのみ抜けたい。ブロック付きメソッド呼び出しのブロックのみ処理終了するにはnext
       end
 
+      #### コメントサーバへ接続
       comm2server = REXML::XPath.first(xmldoc, "/getplayerstatus/ms/addr").text
       comm2port = REXML::XPath.first(xmldoc, "/getplayerstatus/ms/port").text
       comm2thread = REXML::XPath.first(xmldoc, "/getplayerstatus/ms/thread").text
       print("connect to: ", comm2server, ":", comm2port, " , thread=", comm2thread, "\n")
       sock2 = TCPSocket.open(comm2server, comm2port)
+
+      #### 最初にこの合図を送信してやる
       sock2.print "<thread thread=\"#{comm2thread}\" version=\"20061206\" res_from=\"-100\"/>\0"
+
+      #### 受信待ち
       sock2.each("\0") do |line|
-		if line.index("\0") == (line.length - 1) then
-		  line = line[0..-2]
-		end
-		clog.info line.tosjis
+        if line.index("\0") == (line.length - 1) then
+          line = line[0..-2]
+        end
+
+        clog.info line.tosjis
         puts "> #{line}".tosjis
+
         if line =~ /\/disconnect/ then
-          puts "**** DISCONNECT ****\n"
-          break
+          puts "**** DISCONNECT: #{lid} ****\n"
+          # next
+          sock2.close
         end
       end # of sock2.each
+
     end # of Thread.new() do || ...
-  end # of 
+  end # of if comment_threads.size < children ...
   
 end
