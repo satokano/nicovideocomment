@@ -13,8 +13,7 @@ require 'yaml'
 puts "[init] loading config..."
 config = YAML.load_file("config.yaml")
 # === configure
-mycommlist = ["co1247938", "co1063186", "co1268500", "co1004464", "co1233486", "co1219623", "co555044", "co1234033", "co387509", "co521674", "co1198302",
-  "co1116209", "co625201", "co1157798", "co1379188", "co1190806", "co1329172", "co1356736", "co1171944", "co1258342", "co1395104", "co1251188", "co1136133", "co1362710", "co1389548", "co444979", "co1378074", "co351386", "co1419168", "co478298", "co1334900", "co1295356", "co1329481"]
+mycommlist = config["mycommlist"]
 login_mail = config["login_mail"]
 login_password = config["login_password"]
 usebrowsercookie = config["usebrowsercookie"] 
