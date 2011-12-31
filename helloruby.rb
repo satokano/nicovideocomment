@@ -10,6 +10,7 @@ require 'sqlite3'
 require 'psych'
 require 'yaml'
 
+puts "[init] loading config..."
 config = YAML.load_file("config.yaml")
 # === configure
 mycommlist = ["co1247938", "co1063186", "co1268500", "co1004464", "co1233486", "co1219623", "co555044", "co1234033", "co387509", "co521674", "co1198302",
@@ -25,7 +26,6 @@ children = config["children"]
 # === configure end
 
 browsercookie = ""
-# ischildthread = false
 agent = Mechanize.new
 
 # FreeBSD8ではSSLエラーがでた。
@@ -171,7 +171,7 @@ sock.each("\0") do |line|
     commentserver = REXML::XPath.first(xmldoc, "/getplayerstatus/ms/addr").text
     commentport = REXML::XPath.first(xmldoc, "/getplayerstatus/ms/port").text
     commentthread = REXML::XPath.first(xmldoc, "/getplayerstatus/ms/thread").text
-	
+
     comment_threads[liveid] = Thread.new(agent, liveid, commentserver, commentport, commentthread) do |ag, lid, cserv, cport, cth|
       dlog.debug("#{comment_threads.size}: #{comment_threads.keys.sort}")
 
@@ -208,8 +208,8 @@ sock.each("\0") do |line|
           # next
         end
       end # of sock2.each
-
     end # of Thread.new() do || ...
+
   end # of if comment_threads.size < children ...
-  
 end
+
