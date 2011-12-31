@@ -120,15 +120,16 @@ REXML::XPath.each(xmldoc, "//community_id") {|ele|
 }
 
 print "[getalertstatus] OK\n"
-commserver = REXML::XPath.first(xmldoc, "/getalertstatus/ms/addr").text
-commport = REXML::XPath.first(xmldoc, "/getalertstatus/ms/port").text
-commthread = REXML::XPath.first(xmldoc, "/getalertstatus/ms/thread").text
-print("[getalertstatus] connect to: #{commserver}:#{commport} thread=#{commthread}\n")
-alog.info("getalertstatus commserver=#{commserver} commport=#{commport} commthread=#{commthread}");
+alertserver = REXML::XPath.first(xmldoc, "/getalertstatus/ms/addr").text
+alertport = REXML::XPath.first(xmldoc, "/getalertstatus/ms/port").text
+alertthread = REXML::XPath.first(xmldoc, "/getalertstatus/ms/thread").text
+print("[getalertstatus] connect to: #{alertserver}:#{alertport} thread=#{alertthread}\n")
+alog.info("getalertstatus alertserver=#{alertserver} alertport=#{alertport} alertthread=#{alertthread}");
 
 #### アラートサーバへの接続
-sock = TCPSocket.open(commserver, commport)
-sock.print "<thread thread=\"#{commthread}\" version=\"20061206\" res_from=\"-1\">\0"
+#### こっちは英数字記号くらいしか流れてこないのでencodingはサボってる
+sock = TCPSocket.open(alertserver, alertport)
+sock.print "<thread thread=\"#{alertthread}\" version=\"20061206\" res_from=\"-1\">\0"
 sock.each("\0") do |line|
   liveid = ""
   communityid = ""
@@ -167,18 +168,18 @@ sock.each("\0") do |line|
     end
 	
     #### コメントサーバへ接続
-    comm2server = REXML::XPath.first(xmldoc, "/getplayerstatus/ms/addr").text
-    comm2port = REXML::XPath.first(xmldoc, "/getplayerstatus/ms/port").text
-    comm2thread = REXML::XPath.first(xmldoc, "/getplayerstatus/ms/thread").text
+    commentserver = REXML::XPath.first(xmldoc, "/getplayerstatus/ms/addr").text
+    commentport = REXML::XPath.first(xmldoc, "/getplayerstatus/ms/port").text
+    commentthread = REXML::XPath.first(xmldoc, "/getplayerstatus/ms/thread").text
 	
-    comment_threads[liveid] = Thread.new(agent, liveid, comm2server, comm2port, comm2thread) do |ag, lid, cserv, cport, cth|
+    comment_threads[liveid] = Thread.new(agent, liveid, commentserver, commentport, commentthread) do |ag, lid, cserv, cport, cth|
       dlog.debug("#{comment_threads.size}: #{comment_threads.keys.sort}")
 
-      sock2 = TCPSocket.open(cserv, cport) # :external_encoding => "Windows-31J"
+      sock2 = TCPSocket.open(cserv, cport) # :external_encoding => "UTF-8"
       alog.info("connect to: #{cserv}:#{cport} thread=#{cth}")
 
-      dlog.debug("sock2.external_encoding: #{sock2.external_encoding.to_s}")
-      dlog.debug("sock2.internal_encoding: #{sock2.internal_encoding.to_s}")
+      #dlog.debug("sock2.external_encoding: #{sock2.external_encoding.to_s}")
+      #dlog.debug("sock2.internal_encoding: #{sock2.internal_encoding.to_s}")
 
       #### 最初にこの合図を送信してやる
       sock2.print "<thread thread=\"#{cth}\" version=\"20061206\" res_from=\"-100\"/>\0"
@@ -189,16 +190,13 @@ sock.each("\0") do |line|
           line = line[0..-2]
         end
 
-        line.force_encoding("Windows-31J")
+        line.force_encoding("UTF-8")
 
         clog.info line
-        puts "> #{line}\n"
-
-        line.encode!("UTF-8")
 
         if line =~ /chat/ then
-          puts "line like chat\n"
-          commentonly = REXML::XPath.first(line, "//chat").text
+		  xdoc = REXML::Document.new line
+          commentonly = REXML::XPath.first(xdoc, "//chat").text
           puts ">> #{commentonly}\n"
         end
 
