@@ -9,6 +9,7 @@ require 'socket'
 require 'sqlite3'
 require 'psych'
 require 'yaml'
+require 'stomp'
 
 puts "[init] loading config..."
 config = YAML.load_file("config.yaml")
@@ -22,6 +23,11 @@ alert_log = "alert.log"
 comment_log = "comment.log"
 debug_log = "debug.log"
 children = config["children"]
+stomp_user = "guest"
+stomp_password = "guest"
+stomp_host = "localhost"
+stomp_port = 61613
+stomp_dst = "/queue/nicolive01"
 # === configure end
 
 browsercookie = ""
@@ -180,6 +186,9 @@ sock.each("\0") do |line|
       #dlog.debug("sock2.external_encoding: #{sock2.external_encoding.to_s}")
       #dlog.debug("sock2.internal_encoding: #{sock2.internal_encoding.to_s}")
 
+      #### stomp
+      stomp_con = Stomp::Connection.new(stomp_user, stomp_password, stomp_host, stomp_port)
+
       #### 最初にこの合図を送信してやる
       sock2.print "<thread thread=\"#{cth}\" version=\"20061206\" res_from=\"-100\"/>\0"
 
@@ -197,6 +206,7 @@ sock.each("\0") do |line|
 		  xdoc = REXML::Document.new line
           commentonly = REXML::XPath.first(xdoc, "//chat").text
           puts ">> #{commentonly}\n"
+          stomp_con.publish stomp_dst, commentonly
         end
 
         if line =~ /\/disconnect/ then
