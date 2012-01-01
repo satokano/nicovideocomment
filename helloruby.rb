@@ -9,11 +9,12 @@ require 'socket'
 require 'sqlite3'
 require 'psych'
 require 'yaml'
+require 'stomp'
 
+puts "[init] loading config..."
 config = YAML.load_file("config.yaml")
 # === configure
-mycommlist = ["co1247938", "co1063186", "co1268500", "co1004464", "co1233486", "co1219623", "co555044", "co1234033", "co387509", "co521674", "co1198302",
-  "co1116209", "co625201", "co1157798", "co1379188", "co1190806", "co1329172", "co1356736", "co1171944", "co1258342", "co1395104", "co1251188", "co1136133", "co1362710", "co1389548", "co444979", "co1378074", "co351386", "co1419168", "co478298", "co1334900", "co1295356", "co1329481"]
+mycommlist = config["mycommlist"]
 login_mail = config["login_mail"]
 login_password = config["login_password"]
 usebrowsercookie = config["usebrowsercookie"] 
@@ -21,11 +22,15 @@ dbfile = config["dbfile"] # Chrome
 alert_log = "alert.log"
 comment_log = "comment.log"
 debug_log = "debug.log"
-children = 5500
+children = config["children"]
+stomp_user = "guest"
+stomp_password = "guest"
+stomp_host = "localhost"
+stomp_port = 61613
+stomp_dst = "/queue/nicolive01"
 # === configure end
 
 browsercookie = ""
-# ischildthread = false
 agent = Mechanize.new
 
 # FreeBSD8ではSSLエラーがでた。
@@ -120,15 +125,16 @@ REXML::XPath.each(xmldoc, "//community_id") {|ele|
 }
 
 print "[getalertstatus] OK\n"
-commserver = REXML::XPath.first(xmldoc, "/getalertstatus/ms/addr").text
-commport = REXML::XPath.first(xmldoc, "/getalertstatus/ms/port").text
-commthread = REXML::XPath.first(xmldoc, "/getalertstatus/ms/thread").text
-print("[getalertstatus] connect to: ", commserver, ":", commport, " , thread=", commthread, "\n")
-alog.info("getalertstatus commserver=#{commserver} commport=#{commport} commthread=#{commthread}");
+alertserver = REXML::XPath.first(xmldoc, "/getalertstatus/ms/addr").text
+alertport = REXML::XPath.first(xmldoc, "/getalertstatus/ms/port").text
+alertthread = REXML::XPath.first(xmldoc, "/getalertstatus/ms/thread").text
+print("[getalertstatus] connect to: #{alertserver}:#{alertport} thread=#{alertthread}\n")
+alog.info("getalertstatus alertserver=#{alertserver} alertport=#{alertport} alertthread=#{alertthread}");
 
 #### アラートサーバへの接続
-sock = TCPSocket.open(commserver, commport)
-sock.print "<thread thread=\"#{commthread}\" version=\"20061206\" res_from=\"-1\">\0"
+#### こっちは英数字記号くらいしか流れてこないのでencodingはサボってる
+sock = TCPSocket.open(alertserver, alertport)
+sock.print "<thread thread=\"#{alertthread}\" version=\"20061206\" res_from=\"-1\">\0"
 sock.each("\0") do |line|
   liveid = ""
   communityid = ""
@@ -148,40 +154,43 @@ sock.each("\0") do |line|
   if mycommlist.include?(communityid) then
 	alog.warn("**** HIT MYCOMMLIST: #{communityid}")
   end
-  
+ 
   if comment_threads.size < children && line =~ /<chat/ && !comment_threads.has_key?(liveid) then
-    # ag = agent
-    # lid = liveid
-    comment_threads[liveid] = Thread.new(agent, liveid) do |ag, lid|
+	
+    #### getplayerstatusでコメントサーバのIP,port,threadidを取ってくる
+    agent.get("http://live.nicovideo.jp/api/getplayerstatus?v=lv#{liveid}")
+    if agent.page.code != "200" then
+      abort "getplayerstatusエラー(005)(lv#{liveid})\n"
+    end
+    xmldoc = REXML::Document.new agent.page.body
+
+    if REXML::XPath.first(xmldoc, "//getplayerstatus/attribute::status").value !~ /ok/ then
+      # コミュ限とか
+      # <?xml version="1.0" encoding="utf-8"?>
+      # <getplayerstatus status="fail" time="1313947751"><error><code>require_community_member</code></error></getplayerstatus>
+      alog.error("getplayerstatusエラー(006)(lv#{liveid}) エラーコード: #{REXML::XPath.first(xmldoc, "//getplayerstatus/error/code").text}")
+      next # sock.each("\0") do |line| の次回に進む
+    end
+	
+    #### コメントサーバへ接続
+    commentserver = REXML::XPath.first(xmldoc, "/getplayerstatus/ms/addr").text
+    commentport = REXML::XPath.first(xmldoc, "/getplayerstatus/ms/port").text
+    commentthread = REXML::XPath.first(xmldoc, "/getplayerstatus/ms/thread").text
+
+    comment_threads[liveid] = Thread.new(agent, liveid, commentserver, commentport, commentthread) do |ag, lid, cserv, cport, cth|
       dlog.debug("#{comment_threads.size}: #{comment_threads.keys.sort}")
 
-      #### getplayerstatusでコメントサーバのIP,port,threadidを取ってくる
-      ag.get("http://live.nicovideo.jp/api/getplayerstatus?v=lv#{lid}")
-      if ag.page.code != "200" then
-        abort "getplayerstatusエラー(005)(lv#{lid})\n"
-      end
-      xmldoc = REXML::Document.new ag.page.body
+      sock2 = TCPSocket.open(cserv, cport) # :external_encoding => "UTF-8"
+      alog.info("connect to: #{cserv}:#{cport} thread=#{cth}")
 
-      if REXML::XPath.first(xmldoc, "//getplayerstatus/attribute::status").value !~ /ok/ then
-        # コミュ限とか
-        # <?xml version="1.0" encoding="utf-8"?>
-        # <getplayerstatus status="fail" time="1313947751"><error><code>require_community_member</code></error></getplayerstatus>
-        alog.error("getplayerstatusエラー(006)(lv#{lid}) エラーコード: #{REXML::XPath.first(xmldoc, "//getplayerstatus/error/code").text}")
-        next # Thread.newのdoブロックのみ抜けたい。ブロック付きメソッド呼び出しのブロックのみ処理終了するにはnext
-      end
+      #dlog.debug("sock2.external_encoding: #{sock2.external_encoding.to_s}")
+      #dlog.debug("sock2.internal_encoding: #{sock2.internal_encoding.to_s}")
 
-      #### コメントサーバへ接続
-      comm2server = REXML::XPath.first(xmldoc, "/getplayerstatus/ms/addr").text
-      comm2port = REXML::XPath.first(xmldoc, "/getplayerstatus/ms/port").text
-      comm2thread = REXML::XPath.first(xmldoc, "/getplayerstatus/ms/thread").text
-      alog.info("connect to: #{comm2server}: #{comm2port} thread=#{comm2thread}")
-      sock2 = TCPSocket.open(comm2server, comm2port)
-
-      dlog.debug("sock2.external_encoding: #{sock2.external_encoding.to_s}")
-      dlog.debug("sock2.internal_encoding: #{sock2.internal_encoding.to_s}")
+      #### stomp
+      stomp_con = Stomp::Connection.new(stomp_user, stomp_password, stomp_host, stomp_port)
 
       #### 最初にこの合図を送信してやる
-      sock2.print "<thread thread=\"#{comm2thread}\" version=\"20061206\" res_from=\"-100\"/>\0"
+      sock2.print "<thread thread=\"#{cth}\" version=\"20061206\" res_from=\"-100\"/>\0"
 
       #### 受信待ち
       sock2.each("\0") do |line|
@@ -189,9 +198,16 @@ sock.each("\0") do |line|
           line = line[0..-2]
         end
 
+        line.force_encoding("UTF-8")
+
         clog.info line
-        commentonly = REXML::XPath.first(line, "/chat").text
-        puts "> #{commentonly}\n"
+
+        if line =~ /chat/ then
+		  xdoc = REXML::Document.new line
+          commentonly = REXML::XPath.first(xdoc, "//chat").text
+          puts ">> #{commentonly}\n"
+          stomp_con.publish stomp_dst, commentonly
+        end
 
         if line =~ /\/disconnect/ then
           puts "**** DISCONNECT: #{lid} ****\n"
@@ -201,8 +217,8 @@ sock.each("\0") do |line|
           # next
         end
       end # of sock2.each
-
     end # of Thread.new() do || ...
+
   end # of if comment_threads.size < children ...
-  
 end
+
