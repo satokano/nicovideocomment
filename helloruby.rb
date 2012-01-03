@@ -151,7 +151,7 @@ sock.each("\0") do |line|
   end
   alog.info(line)
   
-  if mycommlist.include?(communityid) then
+  if mycommlist && mycommlist.include?(communityid) then
 	alog.warn("**** HIT MYCOMMLIST: #{communityid}")
   end
  
