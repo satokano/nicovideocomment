@@ -219,9 +219,9 @@ sock.each("\0") do |line|
           end
         end # of sock2.each
       rescue => exception
-        puts "**** comment server socket open error: #{cserv} #{cport} #{comment_threads.size} #{exception}\n"
-        dlog.erro "comment server socket open error: #{cserv} #{cport} #{comment_threads.size} #{exception}"
-        sock2.close
+        puts "**** comment server socket open error (threads#{comment_threads.size}): #{cserv} #{cport} #{exception}\n"
+        dlog.error "comment server socket open error (threads#{comment_threads.size}): #{cserv} #{cport} #{exception}"
+        #sock2.close
         comment_threads.delete(lid)
       end
 
