@@ -22,7 +22,7 @@ dbfile = config["dbfile"] # Chrome
 alert_log = "alert.log"
 comment_log = "comment.log"
 debug_log = "debug.log"
-children = config["children"]
+children = config["children"] || 50
 stomp_user = "guest"
 stomp_password = "guest"
 stomp_host = "localhost"
@@ -154,7 +154,7 @@ sock.each("\0") do |line|
   if mycommlist && mycommlist.include?(communityid) then
 	alog.warn("**** HIT MYCOMMLIST: #{communityid}")
   end
- 
+
   if comment_threads.size < children && line =~ /<chat/ && !comment_threads.has_key?(liveid) then
 	
     #### getplayerstatusでコメントサーバのIP,port,threadidを取ってくる
@@ -180,43 +180,51 @@ sock.each("\0") do |line|
     comment_threads[liveid] = Thread.new(agent, liveid, commentserver, commentport, commentthread) do |ag, lid, cserv, cport, cth|
       dlog.debug("#{comment_threads.size}: #{comment_threads.keys.sort}")
 
-      sock2 = TCPSocket.open(cserv, cport) # :external_encoding => "UTF-8"
-      alog.info("connect to: #{cserv}:#{cport} thread=#{cth}")
+      begin
+        sock2 = TCPSocket.open(cserv, cport) # :external_encoding => "UTF-8"
+        alog.info("connect to: #{cserv}:#{cport} thread=#{cth}")
 
-      #dlog.debug("sock2.external_encoding: #{sock2.external_encoding.to_s}")
-      #dlog.debug("sock2.internal_encoding: #{sock2.internal_encoding.to_s}")
+        #dlog.debug("sock2.external_encoding: #{sock2.external_encoding.to_s}")
+        #dlog.debug("sock2.internal_encoding: #{sock2.internal_encoding.to_s}")
 
-      #### stomp
-      stomp_con = Stomp::Connection.new(stomp_user, stomp_password, stomp_host, stomp_port)
+        #### stomp
+        stomp_con = Stomp::Connection.new(stomp_user, stomp_password, stomp_host, stomp_port)
 
-      #### 最初にこの合図を送信してやる
-      sock2.print "<thread thread=\"#{cth}\" version=\"20061206\" res_from=\"-100\"/>\0"
+        #### 最初にこの合図を送信してやる
+        sock2.print "<thread thread=\"#{cth}\" version=\"20061206\" res_from=\"-100\"/>\0"
 
-      #### 受信待ち
-      sock2.each("\0") do |line|
-        if line.index("\0") == (line.length - 1) then
-          line = line[0..-2]
-        end
+        #### 受信待ち
+        sock2.each("\0") do |line|
+          if line.index("\0") == (line.length - 1) then
+            line = line[0..-2]
+          end
 
-        line.force_encoding("UTF-8")
+          line.force_encoding("UTF-8")
 
-        clog.info line
+          clog.info line
 
-        if line =~ /chat/ then
-		  xdoc = REXML::Document.new line
-          commentonly = REXML::XPath.first(xdoc, "//chat").text
-          puts ">> #{commentonly}\n"
-          stomp_con.publish stomp_dst, commentonly
-        end
+          if line =~ /chat/ then
+            xdoc = REXML::Document.new line
+            commentonly = REXML::XPath.first(xdoc, "//chat").text
+            puts ">> #{commentonly}\n"
+            stomp_con.publish stomp_dst, commentonly
+          end
 
-        if line =~ /\/disconnect/ then
-          puts "**** DISCONNECT: #{lid} ****\n"
-          alog.info("disconnect: #{lid}")
-          sock2.close
-          comment_threads.delete(lid)
-          # next
-        end
-      end # of sock2.each
+          if line =~ /\/disconnect/ then
+            puts "**** DISCONNECT: #{lid} ****\n"
+            alog.info("disconnect: #{lid}")
+            sock2.close
+            comment_threads.delete(lid)
+            # next
+          end
+        end # of sock2.each
+      rescue => exception
+        puts "**** comment server socket open error: #{cserv} #{cport} #{comment_threads.size} #{exception}\n"
+        dlog.erro "comment server socket open error: #{cserv} #{cport} #{comment_threads.size} #{exception}"
+        sock2.close
+        comment_threads.delete(lid)
+      end
+
     end # of Thread.new() do || ...
 
   end # of if comment_threads.size < children ...
