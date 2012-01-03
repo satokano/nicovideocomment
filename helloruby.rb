@@ -168,6 +168,7 @@ sock.each("\0") do |line|
       # コミュ限とか
       # <?xml version="1.0" encoding="utf-8"?>
       # <getplayerstatus status="fail" time="1313947751"><error><code>require_community_member</code></error></getplayerstatus>
+      # notloginのときは抜けるようにするか？
       alog.error("getplayerstatusエラー(006)(lv#{liveid}) エラーコード: #{REXML::XPath.first(xmldoc, "//getplayerstatus/error/code").text}")
       next # sock.each("\0") do |line| の次回に進む
     end
