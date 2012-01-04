@@ -10,6 +10,16 @@ require 'sqlite3'
 require 'psych'
 require 'yaml'
 require 'stomp'
+require 'json'
+
+def xpathvalue(xmldoc, path)
+  temp = REXML::XPath.first(xmldoc, path)
+  if temp.nil?
+    ""
+  else
+    temp.value
+  end
+end
 
 puts "[init] loading config..."
 config = YAML.load_file("config.yaml")
@@ -207,9 +217,20 @@ sock.each("\0") do |line|
 
           if line =~ /chat/ then
             xdoc = REXML::Document.new line
-            commentonly = REXML::XPath.first(xdoc, "//chat").text
-            puts ">> #{commentonly}\n"
-            stomp_con.publish stomp_dst, commentonly
+            #commentonly = REXML::XPath.first(xdoc, "//chat").text
+            message = Hash.new
+            message["text"] = REXML::XPath.first(xdoc, "//chat").text
+            message["thread"] = xpathvalue(xdoc, "//chat/attribute::thread")
+            message["no"] = xpathvalue(xdoc, "//chat/attribute::no")
+            message["vpos"] = xpathvalue(xdoc, "//chat/attribute::vpos")
+            message["date"] = xpathvalue(xdoc, "//chat/attribute::date")
+            message["mail"] = xpathvalue(xdoc, "//chat/attribute::mail")
+            message["user_id"] = xpathvalue(xdoc, "//chat/attribute::user_id")
+            message["premium"] = xpathvalue(xdoc, "//chat/attribute::premium")
+            message["anonymity"] = xpathvalue(xdoc, "//chat/attribute::anonymity")
+            message["locale"] = xpathvalue(xdoc, "//chat/attribute::locale")
+            puts "[" + message["thread"] + "] ["+ message["user_id"] + "] "+ message["text"] + "\n"
+            stomp_con.publish stomp_dst, message.to_json
           end
 
           if line =~ /\/disconnect/ then
