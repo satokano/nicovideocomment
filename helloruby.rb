@@ -160,7 +160,8 @@ sock.each("\0") do |line|
     #### getplayerstatusでコメントサーバのIP,port,threadidを取ってくる
     agent.get("http://live.nicovideo.jp/api/getplayerstatus?v=lv#{liveid}")
     if agent.page.code != "200" then
-      abort "getplayerstatusエラー(005)(lv#{liveid})\n"
+      alog.error("getplayerstatusエラー(005)(lv#{liveid})\n")
+      next
     end
     xmldoc = REXML::Document.new agent.page.body
 
