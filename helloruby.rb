@@ -91,24 +91,31 @@ if usebrowsercookie then
   }
 else
   print "[cookie_get] https login secure.nicolive.jp\n"
-  agent.post('https://secure.nicovideo.jp/secure/login?site=nicolive', {:next_url => "", :mail => login_mail, :password => login_password})
-
-  if agent.page.code != "200" then
-	puts "ログインエラー(001)\n"
+  begin
+	agent.post('https://secure.nicovideo.jp/secure/login?site=nicolive', {:next_url => "", :mail => login_mail, :password => login_password})
+  rescue WWW::Mechanize::ResponseCodeError => rce
+	puts "ログインエラー: #{rce.response_code}\n"
 	p agent.page.body
+	abort
+  rescue => ex
+	puts "ログインエラー:\n"
+	puts ex.to_s
 	abort
   end
 end
 
-# puts agent.cookie_jar.jar
-
 #### ログインしてticket取得
 puts "[login] nicolive_antenna"
-agent.post('https://secure.nicovideo.jp/secure/login?site=nicolive_antenna', {:mail => login_mail, :password => login_password})
-
-if agent.page.code != "200" then
-  abort "ログインエラー(001)\n"
+begin
+  agent.post('https://secure.nicovideo.jp/secure/login?site=nicolive_antenna', {:mail => login_mail, :password => login_password})
+rescue WWW::Mechanize::ResponseCodeError => rce
+  abort "ログインエラー: #{rce.response_code}\n"
+rescue => ex
+  puts "ログインエラー:\n"
+  puts ex.to_s
+  abort
 end
+
 agent.cookie_jar.save_as('mech_cookie.yaml')
 
 xmldoc = REXML::Document.new agent.page.body
@@ -119,9 +126,14 @@ end
 ticketstr = REXML::XPath.first(xmldoc, "//ticket").text
 
 #### getalertstatus まずはアラートサーバのIP、ポートをもらってくる
-agent.post('http://live.nicovideo.jp/api/getalertstatus', {:ticket => ticketstr})
-if agent.page.code != "200" then
-  abort "getalertstatusエラー(003)\n"
+begin
+  agent.post('http://live.nicovideo.jp/api/getalertstatus', {:ticket => ticketstr})
+rescue WWW::Mechanize::ResponseCodeError => rce
+  abort "getalertstatusエラー: #{rce.response_code}\n"
+rescue => ex
+  puts "getalertstatusエラー:\n"
+  puts ex.to_s
+  abort
 end
 
 xmldoc = REXML::Document.new agent.page.body
@@ -142,7 +154,6 @@ print("[getalertstatus] connect to: #{alertserver}:#{alertport} thread=#{alertth
 alog.info("getalertstatus alertserver=#{alertserver} alertport=#{alertport} alertthread=#{alertthread}");
 
 #### アラートサーバへの接続
-#### こっちは英数字記号くらいしか流れてこないのでencodingはサボってる
 sock = TCPSocket.open(alertserver, alertport)
 sock.print "<thread thread=\"#{alertthread}\" version=\"20061206\" res_from=\"-1\">\0"
 sock.each("\0") do |line|
@@ -153,6 +164,8 @@ sock.each("\0") do |line|
   if line.index("\0") == (line.length - 1) then
 	line = line[0..-2]
   end
+  
+  line.force_encoding("UTF-8")
   
   if line =~ /<chat [^>]+>(\w+),(\w+),(\w+)<\/chat>/ then
     liveid = $1
@@ -168,11 +181,17 @@ sock.each("\0") do |line|
   if comment_threads.size < children && line =~ /<chat/ && !comment_threads.has_key?(liveid) then
 	
     #### getplayerstatusでコメントサーバのIP,port,threadidを取ってくる
-    agent.get("http://live.nicovideo.jp/api/getplayerstatus?v=lv#{liveid}")
-    if agent.page.code != "200" then
-      alog.error("getplayerstatusエラー(005)(lv#{liveid})\n")
-      next
-    end
+	begin
+	  agent.get("http://live.nicovideo.jp/api/getplayerstatus?v=lv#{liveid}")
+	rescue WWW::Mechanize::ResponseCodeError => rce
+	  alog.error("getplayerstatusエラー(005)(lv#{liveid})(http #{rce.response_code})\n")
+	  next
+	rescue => ex
+	  alog.error("getplayerstatusエラー(lv#{liveid}) \n")
+	  alog.error(ex.to_s)
+	  next
+	end
+	  
     xmldoc = REXML::Document.new agent.page.body
 
     if REXML::XPath.first(xmldoc, "//getplayerstatus/attribute::status").value !~ /ok/ then
@@ -196,9 +215,6 @@ sock.each("\0") do |line|
         sock2 = TCPSocket.open(cserv, cport) # :external_encoding => "UTF-8"
         alog.info("connect to: #{cserv}:#{cport} thread=#{cth}")
 
-        #dlog.debug("sock2.external_encoding: #{sock2.external_encoding.to_s}")
-        #dlog.debug("sock2.internal_encoding: #{sock2.internal_encoding.to_s}")
-
         #### stomp
         stomp_con = Stomp::Connection.new(stomp_user, stomp_password, stomp_host, stomp_port)
 
@@ -217,7 +233,6 @@ sock.each("\0") do |line|
 
           if line =~ /chat/ then
             xdoc = REXML::Document.new line
-            #commentonly = REXML::XPath.first(xdoc, "//chat").text
             message = Hash.new
             message["text"] = REXML::XPath.first(xdoc, "//chat").text
             message["thread"] = xpathvalue(xdoc, "//chat/attribute::thread")
@@ -242,8 +257,8 @@ sock.each("\0") do |line|
           end
         end # of sock2.each
       rescue => exception
-        puts "**** comment server socket open error (threads#{comment_threads.size}): #{cserv} #{cport} #{exception}\n"
-        dlog.error "comment server socket open error (threads#{comment_threads.size}): #{cserv} #{cport} #{exception}"
+        puts "**** comment server socket open or read(each) error (threads#{comment_threads.size}): #{cserv} #{cport} #{exception}\n"
+        dlog.error "comment server socket open or read(each) error (threads#{comment_threads.size}): #{cserv} #{cport} #{exception}"
         #sock2.close
         comment_threads.delete(lid)
       end
