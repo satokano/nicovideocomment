@@ -3,6 +3,7 @@ login_password: p@ssw0rd
 usebrowsercookie: false
 dbfile: C:\\Users\\USERNAME\\AppData\\Local\\Google\\Chrome\\User Data\\Default\\Cookies
 children: 100
+stomp_enabled: false
 mycommlist: 
   - co999999
 

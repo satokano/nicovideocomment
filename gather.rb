@@ -33,6 +33,7 @@ alert_log = "alert.log"
 comment_log = "comment.log"
 debug_log = "debug.log"
 children = config["children"] || 50
+stomp_enabled = config["stomp_enabled"]
 stomp_user = "guest"
 stomp_password = "guest"
 stomp_host = "localhost"
@@ -216,7 +217,17 @@ sock.each("\0") do |line|
         alog.info("connect to: #{cserv}:#{cport} thread=#{cth}")
 
         #### stomp
-        stomp_con = Stomp::Connection.new(stomp_user, stomp_password, stomp_host, stomp_port)
+        if stomp_enabled then
+          begin
+            stomp_con = Stomp::Connection.new(stomp_user, stomp_password, stomp_host, stomp_port)
+          rescue => exception
+            puts "**** STOMP connect error: #{exception}\n"
+            dlog.error "STOMP connect error: #{exception}"
+            stomp_con = nil
+          end
+        else
+          stomp_con = nil
+        end
 
         #### 最初にこの合図を送信してやる
         sock2.print "<thread thread=\"#{cth}\" version=\"20061206\" res_from=\"-100\"/>\0"
@@ -245,7 +256,14 @@ sock.each("\0") do |line|
             message["anonymity"] = xpathvalue(xdoc, "//chat/attribute::anonymity")
             message["locale"] = xpathvalue(xdoc, "//chat/attribute::locale")
             puts "[" + message["thread"] + "] ["+ message["user_id"] + "] "+ message["text"] + "\n"
-            stomp_con.publish stomp_dst, message.to_json
+            if stomp_enabled then
+              begin
+                stomp_con.publish stomp_dst, message.to_json
+              rescue => exception
+                puts "**** STOMP publish error: #{exception}\n"
+                dlog.error "STOMP publish error: #{exception}"
+              end
+            end
           end
 
           if line =~ /\/disconnect/ then
