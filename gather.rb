@@ -11,6 +11,7 @@ require 'psych'
 require 'yaml'
 require 'stomp'
 require 'json'
+require 'cgi'
 
 def xpathvalue(xmldoc, path)
   temp = REXML::XPath.first(xmldoc, path)
@@ -192,16 +193,28 @@ sock.each("\0") do |line|
 	  alog.error(ex.to_s)
 	  next
 	end
-	  
-    xmldoc = REXML::Document.new agent.page.body
 
-    if REXML::XPath.first(xmldoc, "//getplayerstatus/attribute::status").value !~ /ok/ then
-      # コミュ限とか
-      # <?xml version="1.0" encoding="utf-8"?>
-      # <getplayerstatus status="fail" time="1313947751"><error><code>require_community_member</code></error></getplayerstatus>
-      # notloginのときは抜けるようにするか？
-      alog.error("getplayerstatusエラー(006)(lv#{liveid}) エラーコード: #{REXML::XPath.first(xmldoc, "//getplayerstatus/error/code").text}")
-      next # sock.each("\0") do |line| の次回に進む
+    begin
+      xmldoc = REXML::Document.new agent.page.body
+    rescue => exp
+      puts "REXML::Document.new error, agent.page.body: #{agent.page.body}, Exception: #{exp}\n"
+      xmldoc = REXML::Document.new CGI.escape(agent.page.body)
+      # ここですでにnextするべきなのか？
+    end
+
+    begin
+      if REXML::XPath.first(xmldoc, "//getplayerstatus/attribute::status").value !~ /ok/ then
+        # コミュ限とか
+        # <?xml version="1.0" encoding="utf-8"?>
+        # <getplayerstatus status="fail" time="1313947751"><error><code>require_community_member</code></error></getplayerstatus>
+        # notloginのときは抜けるようにするか？
+        alog.error("getplayerstatusエラー(006)(lv#{liveid}) エラーコード: #{REXML::XPath.first(xmldoc, "//getplayerstatus/error/code").text}")
+        next # sock.each("\0") do |line| の次回に進む
+      end
+    rescue => exp
+      puts "REXML::XPath.first().value error, xmldoc: #{xmldoc}, Exception: #{exp}\n"
+      alog.error("REXML::XPath.first().value error, xmldoc: #{xmldoc}, Exception: #{exp}")
+      next
     end
 	
     #### コメントサーバへ接続
