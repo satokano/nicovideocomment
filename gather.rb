@@ -210,8 +210,17 @@ sock.each("\0") do |line|
         # コミュ限とか
         # <?xml version="1.0" encoding="utf-8"?>
         # <getplayerstatus status="fail" time="1313947751"><error><code>require_community_member</code></error></getplayerstatus>
+        # require_community_member, closed, notlogin, unknown
         # notloginのときは抜けるようにするか？
-        alog.error("getplayerstatusエラー(006)(lv#{liveid}) エラーコード: #{REXML::XPath.first(xmldoc, "//getplayerstatus/error/code").text}")
+        gps_error_code = REXML::XPath.first(xmldoc, "//getplayerstatus/error/code").text
+        case gps_error_code
+		when "require_community_member", "closed"
+          # このへんはまあ気にせずともよかろう
+          alog.warn "getplayerstatus error(006)(lv#{liveid}): #{gps_error_code}"
+        else
+          # unknownとかは気にしたい
+          alog.error "getplayerstatus error(008)(lv#{liveid}): #{gps_error_code}"
+        end
         next # sock.each("\0") do |line| の次回に進む
       end
     rescue => exp
