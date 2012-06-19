@@ -230,24 +230,40 @@ sock.each("\0") do |line|
 
       begin
         sock2 = TCPSocket.open(cserv, cport) # :external_encoding => "UTF-8"
-        alog.info("connect to: #{cserv}:#{cport} thread=#{cth}")
+      rescue => exception
+        sock2.close if sock2
+        alog.error "comment server socket open error (threads#{comment_threads.size}): #{cserv} #{cport} #{exception}"
+		comment_threads.delete(lid)
+        next
+      end
 
-        #### stomp
-        if stomp_enabled then
-          begin
-            stomp_con = Stomp::Connection.new(stomp_user, stomp_password, stomp_host, stomp_port)
-          rescue => exception
-            puts "**** STOMP connect error: #{exception}\n"
-            alog.error "STOMP connect error: #{exception}"
-            stomp_con = nil
-          end
-        else
+      alog.info("connect to: #{cserv}:#{cport} thread=#{cth}")
+
+      #### stomp
+      if stomp_enabled then
+        begin
+          stomp_con = Stomp::Connection.new(stomp_user, stomp_password, stomp_host, stomp_port)
+        rescue => exception
+          puts "**** STOMP connect error: #{exception}\n"
+          alog.error "STOMP connect error: #{exception}"
           stomp_con = nil
         end
+      else
+       stomp_con = nil
+      end
 
+      begin
         #### 最初にこの合図を送信してやる
         sock2.print "<thread thread=\"#{cth}\" version=\"20061206\" res_from=\"-100\"/>\0"
+      rescue => exception
+        puts "**** comment server socket print error (threads#{comment_threads.size}): #{cserv} #{cport} #{exception}\n"
+        alog.error "comment server socket print error (threads#{comment_threads.size}): #{cserv} #{cport} #{exception}"
+        sock2.close if sock2
+        comment_threads.delete(lid)
+		next
+      end
 
+      begin
         #### 受信待ち
         sock2.each("\0") do |line|
           if line.index("\0") == (line.length - 1) then
@@ -285,15 +301,15 @@ sock.each("\0") do |line|
           if line =~ /\/disconnect/ then
             puts "**** DISCONNECT: #{lid} ****\n"
             alog.info("disconnect: #{lid}")
-            sock2.close
+            sock2.close if sock2
             comment_threads.delete(lid)
             # next
           end
         end # of sock2.each
       rescue => exception
-        puts "**** comment server socket open or read(each) error (threads#{comment_threads.size}): #{cserv} #{cport} #{exception}\n"
-        alog.error "comment server socket open or read(each) error (threads#{comment_threads.size}): #{cserv} #{cport} #{exception}"
-        #sock2.close # closeしなくてよい？？
+        puts "**** comment server socket read(each) error (threads#{comment_threads.size}): #{cserv} #{cport} #{exception}\n"
+        alog.error "comment server socket read(each) error (threads#{comment_threads.size}): #{cserv} #{cport} #{exception}"
+        sock2.close if sock2
         comment_threads.delete(lid)
       end
 
