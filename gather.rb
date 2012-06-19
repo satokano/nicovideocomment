@@ -49,6 +49,10 @@ agent = Mechanize.new
 # デフォルトで/etc/ssl/cert.pemが使われるので、そこからシンボリックリンクを張って回避
 # agent.ca_file = "/usr/local/share/certs/ca-root-nss.crt"
 
+#### ログ出力 3種類
+# alert.log (alog): アラートサーバから配信される、枠開始情報を記録＋gather.rbの稼働確認用ログ
+# comment.log (clog): 収集したコメントを記録するログ
+# debug.log (dlog): デバッグ用詳細情報。稼働確認を越えた詳細情報を知りたいときにこっちに出すことにする。
 alog = Logger.new(alert_log, 5)
 alog.level = Logger::INFO
 clog = Logger.new(comment_log, 600)
@@ -186,11 +190,10 @@ sock.each("\0") do |line|
 	begin
 	  agent.get("http://live.nicovideo.jp/api/getplayerstatus?v=lv#{liveid}")
 	rescue Mechanize::ResponseCodeError => rce
-	  alog.error("getplayerstatusエラー(005)(lv#{liveid})(http #{rce.response_code})\n")
+	  alog.error("getplayerstatusエラー(005)(lv#{liveid})(http #{rce.response_code})")
 	  next
 	rescue => ex
-	  alog.error("getplayerstatusエラー(lv#{liveid}) \n")
-	  alog.error(ex.to_s)
+	  alog.error("getplayerstatusエラー(007)(lv#{liveid}): #{ex}")
 	  next
 	end
 
@@ -235,7 +238,7 @@ sock.each("\0") do |line|
             stomp_con = Stomp::Connection.new(stomp_user, stomp_password, stomp_host, stomp_port)
           rescue => exception
             puts "**** STOMP connect error: #{exception}\n"
-            dlog.error "STOMP connect error: #{exception}"
+            alog.error "STOMP connect error: #{exception}"
             stomp_con = nil
           end
         else
@@ -274,7 +277,7 @@ sock.each("\0") do |line|
                 stomp_con.publish stomp_dst, message.to_json
               rescue => exception
                 puts "**** STOMP publish error: #{exception}\n"
-                dlog.error "STOMP publish error: #{exception}"
+                alog.error "STOMP publish error: #{exception}"
               end
             end
           end
@@ -289,8 +292,8 @@ sock.each("\0") do |line|
         end # of sock2.each
       rescue => exception
         puts "**** comment server socket open or read(each) error (threads#{comment_threads.size}): #{cserv} #{cport} #{exception}\n"
-        dlog.error "comment server socket open or read(each) error (threads#{comment_threads.size}): #{cserv} #{cport} #{exception}"
-        #sock2.close
+        alog.error "comment server socket open or read(each) error (threads#{comment_threads.size}): #{cserv} #{cport} #{exception}"
+        #sock2.close # closeしなくてよい？？
         comment_threads.delete(lid)
       end
 
