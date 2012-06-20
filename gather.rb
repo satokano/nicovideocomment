@@ -160,6 +160,7 @@ print("[getalertstatus] connect to: #{alertserver}:#{alertport} thread=#{alertth
 alog.info("getalertstatus alertserver=#{alertserver} alertport=#{alertport} alertthread=#{alertthread}");
 
 #### アラートサーバへの接続
+# TODO: 本来はアラートサーバ接続まわりのエラー処理も必要
 sock = TCPSocket.open(alertserver, alertport)
 sock.print "<thread thread=\"#{alertthread}\" version=\"20061206\" res_from=\"-1\">\0"
 sock.each("\0") do |line|
@@ -190,10 +191,10 @@ sock.each("\0") do |line|
 	begin
 	  agent.get("http://live.nicovideo.jp/api/getplayerstatus?v=lv#{liveid}")
 	rescue Mechanize::ResponseCodeError => rce
-	  alog.error("getplayerstatusエラー(005)(lv#{liveid})(http #{rce.response_code})")
+	  alog.error("getplayerstatus error(005)(lv#{liveid})(http #{rce.response_code})")
 	  next
 	rescue => ex
-	  alog.error("getplayerstatusエラー(007)(lv#{liveid}): #{ex}")
+	  alog.error("getplayerstatus error(007)(lv#{liveid}): #{ex}")
 	  next
 	end
 
@@ -243,7 +244,7 @@ sock.each("\0") do |line|
         sock2.close if sock2
         alog.error "comment server socket open error (threads#{comment_threads.size}): #{cserv} #{cport} #{exception}"
 		comment_threads.delete(lid)
-        next
+        break # その受信待ちスレッドはあきらめて異常終了扱い、Thread.newを抜ける。
       end
 
       alog.info("connect to: #{cserv}:#{cport} thread=#{cth}")
@@ -269,7 +270,7 @@ sock.each("\0") do |line|
         alog.error "comment server socket print error (threads#{comment_threads.size}): #{cserv} #{cport} #{exception}"
         sock2.close if sock2
         comment_threads.delete(lid)
-		next
+		break # その受信待ちスレッドはあきらめて異常終了扱い、Thread.newを抜ける。
       end
 
       begin
@@ -312,7 +313,7 @@ sock.each("\0") do |line|
             alog.info("disconnect: #{lid}")
             sock2.close if sock2
             comment_threads.delete(lid)
-            # next
+            break # その受信待ちスレッドは終了でよいから、sock2.eachを抜けて、Thread.newも抜ける。break
           end
         end # of sock2.each
       rescue => exception
