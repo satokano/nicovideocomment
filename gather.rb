@@ -211,7 +211,7 @@ sock.each("\0") do |line|
         # コミュ限とか
         # <?xml version="1.0" encoding="utf-8"?>
         # <getplayerstatus status="fail" time="1313947751"><error><code>require_community_member</code></error></getplayerstatus>
-        # require_community_member, closed, notlogin, unknown
+        # require_community_member, closed, notlogin, deletedbyuser, unknown
         # notloginのときは抜けるようにするか？
         gps_error_code = REXML::XPath.first(xmldoc, "//getplayerstatus/error/code").text
         case gps_error_code
