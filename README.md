@@ -13,7 +13,9 @@
 --------
 
 bundler対応、jemalloc対応を行ったので、以下の通り。
+
     bundler exec je ruby ./gather.rb
+
 
 できること
 ----------
