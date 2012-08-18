@@ -6,14 +6,14 @@
 インストール
 ------------
 
-git clone git@github.com:satokano/nicovideocomment.git
-bundle install --path vendor/bundle
+    git clone git@github.com:satokano/nicovideocomment.git
+    bundle install --path vendor/bundle
 
 起動
 --------
 
 bundler対応、jemalloc対応を行ったので、以下の通り。
-- bundler exec je ruby ./gather.rb
+    bundler exec je ruby ./gather.rb
 
 できること
 ----------
@@ -51,14 +51,14 @@ bundler対応、jemalloc対応を行ったので、以下の通り。
 動作確認環境
 ------------
 
-[okano@localhost nvc]$ uname -a
-Linux localhost.localdomain 2.6.18-274.12.1.el5 #1 SMP Tue Nov 29 13:37:46 EST 2011 x86_64 x86_64 x86_64 GNU/Linux
+    [okano@localhost nvc]$ uname -a
+    Linux localhost.localdomain 2.6.18-274.12.1.el5 #1 SMP Tue Nov 29 13:37:46 EST 2011 x86_64 x86_64 x86_64 GNU/Linux
 
-[okano@localhost nvc]$ cat /etc/redhat-release
-CentOS release 5.8 (Final)
+    [okano@localhost nvc]$ cat /etc/redhat-release
+    CentOS release 5.8 (Final)
 
-[okano@localhost nvc]$ ruby --version
-ruby 1.9.3p0 (2011-10-30 revision 33570) [x86_64-linux]
+    [okano@localhost nvc]$ ruby --version
+    ruby 1.9.3p0 (2011-10-30 revision 33570) [x86_64-linux]
 
 
 2011/11/30
