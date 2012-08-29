@@ -9,6 +9,13 @@
     git clone git@github.com:satokano/nicovideocomment.git
     bundle install --path vendor/bundle
 
+設定
+--------
+
+- config.yaml.sampleをconfig.yamlにリネーム。内容は適宜編集すること。
+- いまのところ、大量にTCPコネクションを消費する実装にしているので、ulimitのopen filesの値は数千～1万程度にしておくこと。
+
+
 起動
 --------
 
