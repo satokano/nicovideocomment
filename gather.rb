@@ -33,6 +33,7 @@ dbfile = config["dbfile"] # Chrome
 alert_log = "./log/alert.log"
 comment_log = "./log/comment.log"
 debug_log = "./log/debug.log"
+gc_log = "./log/gc.log"
 children = config["children"] || 50
 stomp_enabled = config["stomp_enabled"]
 stomp_user = "guest"
@@ -59,6 +60,17 @@ clog = Logger.new(comment_log, 600)
 clog.level = Logger::INFO
 dlog = Logger.new(debug_log, 3)
 dlog.level = Logger::DEBUG
+gclog = Logger.new(gc_log, 10)
+gclog.level = Logger::DEBUG
+
+### GC log start
+gclog_thread = Thread.new() do ||
+  while true
+    gclog.info(GC.stat)
+    sleep 1
+  end
+end
+
 
 comment_threads = Hash.new()
 
