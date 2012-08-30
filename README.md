@@ -9,6 +9,13 @@
     git clone git@github.com:satokano/nicovideocomment.git
     bundle install --path vendor/bundle
 
+ただし必要に応じて
+
+    bundle config build.zmq --with-zmq-dir=/usr/local
+
+のようにZeroMQのインストールディレクトリを指定する。
+
+
 設定
 --------
 
@@ -73,6 +80,9 @@ bundler対応、jemalloc対応を行ったので、以下の通り。
 
     [okano@localhost nvc]$ ruby --version
     ruby 1.9.3p0 (2011-10-30 revision 33570) [x86_64-linux]
+
+
+- ZeroMQは2.2.0。
 
 
 2011/11/30
