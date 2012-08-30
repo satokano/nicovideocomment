@@ -63,6 +63,8 @@ bundler対応、jemalloc対応を行ったので、以下の通り。
 動作確認環境
 ------------
 
+主にLinux、ときどきFreeBSDで動作確認しています。GC.statを使っているためRuby 1.9.3が必要になります。
+
     [okano@localhost nvc]$ uname -a
     Linux localhost.localdomain 2.6.18-274.12.1.el5 #1 SMP Tue Nov 29 13:37:46 EST 2011 x86_64 x86_64 x86_64 GNU/Linux
 
