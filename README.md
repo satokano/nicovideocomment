@@ -9,11 +9,11 @@
     git clone git@github.com:satokano/nicovideocomment.git
     bundle install --path vendor/bundle
 
-ただし必要に応じて
+ただし必要に応じて事前に
 
     bundle config build.zmq --with-zmq-dir=/usr/local
 
-のようにZeroMQのインストールディレクトリを指定する。
+のようにZeroMQのインストールディレクトリを指定しておく。
 
 
 設定
