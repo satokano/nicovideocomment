@@ -25,6 +25,7 @@ GEM
       unf_ext
     unf_ext (0.0.5)
     webrobots (0.0.13)
+    zmq (2.1.4)
 
 PLATFORMS
   ruby
@@ -37,3 +38,4 @@ DEPENDENCIES
   psych
   sqlite3
   stomp
+  zmq
