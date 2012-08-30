@@ -34,6 +34,8 @@ alert_log = "./log/alert.log"
 comment_log = "./log/comment.log"
 debug_log = "./log/debug.log"
 gc_log = "./log/gc.log"
+gc_log_enabled = true
+gc_log_interval = 1 # second
 children = config["children"] || 50
 stomp_enabled = config["stomp_enabled"]
 stomp_user = "guest"
@@ -54,6 +56,7 @@ agent = Mechanize.new
 # alert.log (alog): アラートサーバから配信される、枠開始情報を記録＋gather.rbの稼働確認用ログ
 # comment.log (clog): 収集したコメントを記録するログ
 # debug.log (dlog): デバッグ用詳細情報。稼働確認を越えた詳細情報を知りたいときにこっちに出すことにする。
+# gc.log (gclog): GC情報。Ruby 1.9.3のGC.statの内容を1秒ごとに出力。
 alog = Logger.new(alert_log, 5)
 alog.level = Logger::INFO
 clog = Logger.new(comment_log, 600)
@@ -64,13 +67,14 @@ gclog = Logger.new(gc_log, 10)
 gclog.level = Logger::DEBUG
 
 ### GC log start
-gclog_thread = Thread.new() do ||
-  while true
-    gclog.info(GC.stat)
-    sleep 1
+if gc_log_enabled then
+  gclog_thread = Thread.new() do ||
+    while true
+      gclog.info(GC.stat)
+      sleep gc_log_interval
+    end
   end
 end
-
 
 comment_threads = Hash.new()
 
