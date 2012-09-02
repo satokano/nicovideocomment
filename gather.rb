@@ -12,6 +12,7 @@ require 'yaml'
 require 'stomp'
 require 'json'
 require 'cgi'
+require 'zmq'
 
 def xpathvalue(xmldoc, path)
   temp = REXML::XPath.first(xmldoc, path)
@@ -43,6 +44,7 @@ stomp_password = "guest"
 stomp_host = "localhost"
 stomp_port = 61613
 stomp_dst = "/queue/nicolive01"
+zmq_enabled = config["zmq_enabled"]
 # === configure end
 
 browsercookie = ""
@@ -276,6 +278,13 @@ sock.each("\0") do |line|
         end
       else
        stomp_con = nil
+      end
+
+      #### ZMQ
+      if zmq_enabled then
+        begin
+        rescue => exception
+        end
       end
 
       begin
