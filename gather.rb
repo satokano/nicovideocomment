@@ -283,7 +283,13 @@ sock.each("\0") do |line|
       #### ZMQ
       if zmq_enabled then
         begin
+          zmq_context = ZMQ::Context.new
+          zmq_sock = zmq_context.socket(ZMQ::PUB)
+          zmq_sock.bind("tcp://127.0.0.1:5000")
         rescue => exception
+          puts "**** ZMQ new/bind error: #{exception}\n"
+          alog.error "ZMQ new/bind error: #{exception}"
+          zmq_context = nil
         end
       end
 
