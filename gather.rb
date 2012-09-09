@@ -329,6 +329,8 @@ sock.each("\0") do |line|
             message["anonymity"] = xpathvalue(xdoc, "//chat/attribute::anonymity")
             message["locale"] = xpathvalue(xdoc, "//chat/attribute::locale")
             puts "[" + message["thread"] + "] ["+ message["user_id"] + "] "+ message["text"] + "\n"
+            
+            # stomp publish
             if stomp_enabled then
               begin
                 stomp_con.publish stomp_dst, message.to_json
@@ -337,11 +339,24 @@ sock.each("\0") do |line|
                 alog.error "STOMP publish error: #{exception}"
               end
             end
+            
+            # zmq send
+            if zmq_enabled then
+              begin
+                zmq_sock.send("allmsg #{message.to_json}") # jsonとするか他の形式にするか
+              rescue => exception
+                puts "**** ZMQ send error: #{exception}\n"
+                alog.error "ZMQ send error: #{exception}"
+              end
+            end
+            
           end
 
           if line =~ /\/disconnect/ then
             puts "**** DISCONNECT: #{lid} ****\n"
             alog.info("disconnect: #{lid}")
+            # TODO: stompのclose？
+            # TODO: zmq_sockのclose？
             sock2.close if sock2
             comment_threads.delete(lid)
             break # その受信待ちスレッドは終了でよいから、sock2.eachを抜けて、Thread.newも抜ける。break
@@ -350,6 +365,8 @@ sock.each("\0") do |line|
       rescue => exception
         puts "**** comment server socket read(each) error (threads#{comment_threads.size}): #{cserv} #{cport} #{exception}\n"
         alog.error "comment server socket read(each) error (threads#{comment_threads.size}): #{cserv} #{cport} #{exception}"
+        # TODO: stompのclose？
+        # TODO: zmq_sockのclose？
         sock2.close if sock2
         comment_threads.delete(lid)
       end
