@@ -230,19 +230,6 @@ sock.each("\0") do |line|
 
       alog.info("connect to: #{cserv}:#{cport} thread=#{cth}")
 
-      #### stomp
-      if stomp_enabled then
-        begin
-          stomp_con = Stomp::Connection.new(stomp_user, stomp_password, stomp_host, stomp_port)
-        rescue => exception
-          puts "**** STOMP connect error: #{exception}\n"
-          alog.error "STOMP connect error: #{exception}"
-          stomp_con = nil
-        end
-      else
-       stomp_con = nil
-      end
-
       #### ZMQ
       if zmq_enabled then
         begin
@@ -293,16 +280,6 @@ sock.each("\0") do |line|
             message["locale"] = xpathvalue(xdoc, "//chat/attribute::locale")
             puts "[" + message["thread"] + "] ["+ message["user_id"] + "] "+ message["text"] + "\n"
             
-            # stomp publish
-            if stomp_enabled then
-              begin
-                stomp_con.publish stomp_dst, message.to_json
-              rescue => exception
-                puts "**** STOMP publish error: #{exception}\n"
-                alog.error "STOMP publish error: #{exception}"
-              end
-            end
-            
             # zmq send
             if zmq_enabled then
               begin
@@ -318,7 +295,6 @@ sock.each("\0") do |line|
           if line =~ /\/disconnect/ then
             puts "**** DISCONNECT: #{lid} ****\n"
             alog.info("disconnect: #{lid}")
-            # TODO: stompのclose？
             # TODO: zmq_sockのclose？
             sock2.close if sock2
             comment_threads.delete(lid)
@@ -328,7 +304,6 @@ sock.each("\0") do |line|
       rescue => exception
         puts "**** comment server socket read(each) error (threads#{comment_threads.size}): #{cserv} #{cport} #{exception}\n"
         alog.error "comment server socket read(each) error (threads#{comment_threads.size}): #{cserv} #{cport} #{exception}"
-        # TODO: stompのclose？
         # TODO: zmq_sockのclose？
         sock2.close if sock2
         comment_threads.delete(lid)
