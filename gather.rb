@@ -1,5 +1,12 @@
 # -*- coding: utf-8 -*-
 
+#
+# = ニコニコ生放送のコメントを収集する
+# Author:: Satoshi OKANO
+# Copyright:: Copyright 2011-2012 Satoshi OKANO
+# License:: MIT
+#
+
 require 'rubygems'
 require 'mechanize'
 require 'kconv'
@@ -9,7 +16,6 @@ require 'socket'
 require 'sqlite3'
 require 'psych'
 require 'yaml'
-require 'stomp'
 require 'json'
 require 'cgi'
 require 'zmq'
@@ -29,8 +35,6 @@ config = YAML.load_file("config.yaml")
 mycommlist = config["mycommlist"]
 login_mail = config["login_mail"]
 login_password = config["login_password"]
-usebrowsercookie = config["usebrowsercookie"] 
-dbfile = config["dbfile"] # Chrome
 alert_log = "./log/alert.log"
 comment_log = "./log/comment.log"
 debug_log = "./log/debug.log"
@@ -38,16 +42,9 @@ gc_log = "./log/gc.log"
 gc_log_enabled = true
 gc_log_interval = 1 # second
 children = config["children"] || 50
-stomp_enabled = config["stomp_enabled"]
-stomp_user = "guest"
-stomp_password = "guest"
-stomp_host = "localhost"
-stomp_port = 61613
-stomp_dst = "/queue/nicolive01"
 zmq_enabled = config["zmq_enabled"]
 # === configure end
 
-browsercookie = ""
 agent = Mechanize.new
 
 # FreeBSD8ではSSLエラーがでた。
@@ -81,51 +78,17 @@ end
 comment_threads = Hash.new()
 
 #### Cookie準備
-if usebrowsercookie then
-  # Chrome
-  sql = "select * from cookies where host_key like '%nicovideo.jp' and name = 'user_session';"
-  db = SQLite3::Database.new(dbfile)
-  db.results_as_hash = true
-  db.execute(sql) do |row|
-	# Looks like it's using 1601-01-01 00:00:00 UTC as the epoc
-    exptime_utc = Time.at(Time.utc(1601, 1, 1, 0, 0, 0, 0), row['expires_utc']).utc
-
-    # CREATE TABLE cookies 
-    # (creation_utc INTEGER NOT NULL UNIQUE PRIMARY KEY,
-    # host_key TEXT NOT NULL,
-    # name TEXT NOT NULL,
-    # value TEXT NOT NULL,
-    # path TEXT NOT NULL,
-    # expires_utc INTEGER NOT NULL,
-    # secure INTEGER NOT NULL,
-    # httponly INTEGER NOT NULL,
-    # last_access_utc INTEGER NOT NULL);
-
-    # [12957760714289143, ".nicovideo.jp", "user_session", "user_session_1925160_454899025913333356", "/", 12960352716000000, 0, 0, 12957978849585587]
-	browsercookie = row['name'] + "=" + row['value']+ "; expires=" + exptime_utc.strftime("%a, %d-%b-%Y %H:%M:%S GMT") + "; path=" + row['path'] + "; domain=" + row['host_key'] + ";"
-	puts "[cookie_get] #{browsercookie}\n"
-  end
-end
-
-if usebrowsercookie then
-  print "[cookie_set] usebrowsercookie \n"
-  nicovideo_jp_uri = URI.parse("https://secure.nicovideo.jp/") # 完全なURLを入れておく
-  Mechanize::Cookie.parse(nicovideo_jp_uri, browsercookie) {|c|
-	agent.cookie_jar.add(nicovideo_jp_uri, c)
-  }
-else
-  print "[cookie_get] https login secure.nicolive.jp\n"
-  begin
-	agent.post('https://secure.nicovideo.jp/secure/login?site=nicolive', {:next_url => "", :mail => login_mail, :password => login_password})
-  rescue Mechanize::ResponseCodeError => rce
-	puts "ログインエラー: #{rce.response_code}\n"
-	p agent.page.body
-	abort
-  rescue => ex
-	puts "ログインエラー:\n"
-	puts ex.to_s
-	abort
-  end
+print "[cookie_get] https login secure.nicolive.jp\n"
+begin
+  agent.post('https://secure.nicovideo.jp/secure/login?site=nicolive', {:next_url => "", :mail => login_mail, :password => login_password})
+rescue Mechanize::ResponseCodeError => rce
+  puts "ログインエラー: #{rce.response_code}\n"
+  p agent.page.body
+  abort
+rescue => ex
+  puts "ログインエラー:\n"
+  puts ex.to_s
+  abort
 end
 
 #### ログインしてticket取得
