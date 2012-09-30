@@ -1,5 +1,6 @@
 comment.log*
 debug.log*
 alert.log*
+gc.log*
 mech_cookie.yaml
 
