@@ -28,7 +28,7 @@
 
 bundler対応、jemalloc対応を行ったので、以下の通り。
 
-    bundle exec je ruby ./gather.rb
+    bundle exec je ruby ./collector.rb
 
 
 できること
