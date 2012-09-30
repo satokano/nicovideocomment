@@ -6,6 +6,5 @@ gem "mechanize"
 gem "nokogiri"
 gem "psych"
 gem "sqlite3"
-gem "stomp"
 gem "zmq"
 
