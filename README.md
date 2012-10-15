@@ -3,6 +3,8 @@
 
 片っ端からコメントを収集します。
 
+[![Build Status](https://travis-ci.org/satokano/nicovideocomment.png)](https://travis-ci.org/satokano/nicovideocomment)
+
 インストール
 ------------
 
