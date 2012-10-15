@@ -76,6 +76,8 @@ end
 # 
 # socketは、thread-safe"ではない"。
 # http://api.zeromq.org/2-2:zmq-socket
+#
+# なので（？）zmq_sockのまわりで同期化して使うことにするけど・・・遅いか？
 if zmq_enabled then
   begin
     zmq_context = ZMQ::Context.new
