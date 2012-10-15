@@ -1,6 +1,6 @@
 source "http://rubygems.org"
 
-gem "je"
+gem "je", :group => :linux
 gem "json"
 gem "mechanize"
 gem "nokogiri"
@@ -10,4 +10,5 @@ gem "zmq"
 
 group :test do
   gem "rake"
+  gem "rspec"
 end
