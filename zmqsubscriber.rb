@@ -27,6 +27,7 @@ rescue => exception
 end
 
 while message = zmq_sock.recv
+  message.force_encoding("UTF-8")
   flat = JSON.parse(message)
   puts flat["text"]
 end
