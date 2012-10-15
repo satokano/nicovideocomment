@@ -1,7 +1,7 @@
-task :default => "bundle_list"
+task :default => :bundle_list
 
 task :bundle_list do
-  bundle list
+  sh "bundle list;bundle check"
 end
 
 task :spec do
