@@ -8,16 +8,16 @@
 #
 
 require 'rubygems'
+require 'cgi'
 require 'mechanize'
 require 'kconv'
 require 'logger'
 require 'rexml/document'
-require 'socket'
-require 'sqlite3'
 require 'psych'
-require 'yaml'
 require 'json'
-require 'cgi'
+require 'socket'
+require 'thread'
+require 'yaml'
 require 'zmq'
 
 def xpathvalue(xmldoc, path)
@@ -45,11 +45,6 @@ children = config["children"] || 50
 zmq_enabled = config["zmq_enabled"]
 # === configure end
 
-agent = Mechanize.new
-
-# FreeBSD8ではSSLエラーがでた。
-# デフォルトで/etc/ssl/cert.pemが使われるので、そこからシンボリックリンクを張って回避
-# agent.ca_file = "/usr/local/share/certs/ca-root-nss.crt"
 
 #### ログ出力 3種類
 # alert.log (alog): アラートサーバから配信される、枠開始情報を記録＋gather.rbの稼働確認用ログ
@@ -75,7 +70,36 @@ if gc_log_enabled then
   end
 end
 
+#### ZeroMQ Context作成。これはプロセス単位で1個だけ。
+# Context自体はthread-safeである。
+# http://api.zeromq.org/2-2:zmq-init
+# 
+# socketは、thread-safe"ではない"。
+# http://api.zeromq.org/2-2:zmq-socket
+if zmq_enabled then
+  begin
+    zmq_context = ZMQ::Context.new
+    zmq_sock = zmq_context.socket(ZMQ::PUB)
+    zmq_sock.bind("tcp://127.0.0.1:5000")
+    
+    # zmq_sockの操作の前後で使う
+    zmq_semaphore = Mutex.new
+  rescue => exception
+    puts "**** ZMQ new/bind error: #{exception}\n"
+    alog.error "ZMQ new/bind error: #{exception}"
+    zmq_context = nil
+  end
+end
+
 comment_threads = Hash.new()
+
+
+#### Mechanizeを作成して、通信を開始する。
+agent = Mechanize.new
+
+# FreeBSD8ではSSLエラーがでた。
+# デフォルトで/etc/ssl/cert.pemが使われるので、そこからシンボリックリンクを張って回避
+# agent.ca_file = "/usr/local/share/certs/ca-root-nss.crt"
 
 #### Cookie準備
 print "[cookie_get] https login secure.nicolive.jp\n"
@@ -216,7 +240,8 @@ sock.each("\0") do |line|
     commentport = REXML::XPath.first(xmldoc, "/getplayerstatus/ms/port").text
     commentthread = REXML::XPath.first(xmldoc, "/getplayerstatus/ms/thread").text
 
-    comment_threads[liveid] = Thread.new(agent, liveid, commentserver, commentport, commentthread) do |ag, lid, cserv, cport, cth|
+    # 放送枠ごとにThread生成
+    comment_threads[liveid] = Thread.new(liveid, commentserver, commentport, commentthread) do |lid, cserv, cport, cth|
       dlog.debug("#{comment_threads.size}: #{comment_threads.keys.sort}")
 
       begin
@@ -229,19 +254,6 @@ sock.each("\0") do |line|
       end
 
       alog.info("connect to: #{cserv}:#{cport} thread=#{cth}")
-
-      #### ZMQ
-      if zmq_enabled then
-        begin
-          zmq_context = ZMQ::Context.new
-          zmq_sock = zmq_context.socket(ZMQ::PUB)
-          zmq_sock.bind("tcp://127.0.0.1:5000")
-        rescue => exception
-          puts "**** ZMQ new/bind error: #{exception}\n"
-          alog.error "ZMQ new/bind error: #{exception}"
-          zmq_context = nil
-        end
-      end
 
       begin
         #### 最初にこの合図を送信してやる
@@ -283,7 +295,9 @@ sock.each("\0") do |line|
             # zmq send
             if zmq_enabled then
               begin
-                zmq_sock.send("allmsg #{message.to_json}") # jsonとするか他の形式にするか
+                zmq_semaphore.synchronize do
+                  zmq_sock.send("allmsg #{message.to_json}") # jsonとするか他の形式にするか
+                end
               rescue => exception
                 puts "**** ZMQ send error: #{exception}\n"
                 alog.error "ZMQ send error: #{exception}"
