@@ -8,3 +8,6 @@ gem "psych"
 gem "sqlite3"
 gem "zmq"
 
+group :test do
+  gem "rake"
+end
