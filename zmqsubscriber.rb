@@ -37,16 +37,22 @@ rescue => exception
   return -1
 end
 
-mg_db = mg_connection.db("niconico_comment")
-mg_collection = mg_db.collection("ph0")
+begin
+  mg_db = mg_connection.db("niconico_comment")
+  mg_collection = mg_db.collection("ph0")
+rescue => exception
+  puts "*** Mongo open DB or Collection error: #{exception}\n"
+  alog.error "Mongo open DB or Collection error: #{exception}"
+  return -1
+end
 
 while tag_message = zmq_sock.recv
   # tag_message.force_encoding("UTF-8") # 不要？
   message_json = tag_message.scan(/allmsg (.+)/).first.first
   message_flat = JSON.parse(message_json)
-
   id = mg_collection.insert(message_flat)
-
-  puts message_flat["text"]
+  #puts message_flat["text"]
 end
+
+# TODO: Close ZeroMQ / Mongo
 
