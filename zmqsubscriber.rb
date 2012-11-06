@@ -43,10 +43,10 @@ mg_collection = mg_db.collection("ph0")
 while tag_message = zmq_sock.recv
   # tag_message.force_encoding("UTF-8") # 不要？
   message_json = tag_message.scan(/allmsg (.+)/).first.first
-
-  id = mg_collection.insert(message_json)
-
   message_flat = JSON.parse(message_json)
+
+  id = mg_collection.insert(message_flat)
+
   puts message_flat["text"]
 end
 
