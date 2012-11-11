@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 #
-# = ニコニコ生放送のコメントを、collector.rbから受け取って中継する
+# = ニコニコ生放送のコメントを、collector.rbからZeroMQ経由で受け取り（さらにバックエンドに投入する）
 # Author:: Satoshi OKANO
 # Copyright:: Copyright 2011-2012 Satoshi OKANO
 # License:: MIT
