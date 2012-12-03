@@ -297,7 +297,7 @@ sock.each("\0") do |line|
             # zmq send
             if zmq_enabled then
               begin
-                zmq_semaphore.synchronize do
+                zmq_semaphore.synchronize do # TODO: synchronizeしてたら意味ない？？？
                   zmq_sock.send("allmsg #{message.to_json}") # jsonとするか他の形式にするか
                 end
               rescue => exception
