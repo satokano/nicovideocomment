@@ -47,7 +47,7 @@ zmq_enabled = config["zmq_enabled"]
 
 
 #### ログ出力 4種類
-# alert.log (alog): アラートサーバから配信される、枠開始情報を記録＋gather.rbの稼働確認用ログ
+# alert.log (alog): アラートサーバから配信される、枠開始情報を記録＋collector.rbの稼働確認用ログ
 # comment.log (clog): 収集したコメントを記録するログ
 # debug.log (dlog): デバッグ用詳細情報。稼働確認を越えた詳細情報を知りたいときにこっちに出すことにする。
 # gc.log (gclog): GC情報。Ruby 1.9.3のGC.statの内容を1秒ごとに出力。
