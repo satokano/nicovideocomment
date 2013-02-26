@@ -13,6 +13,8 @@ require 'logger'
 require 'mongo'
 require 'zmq'
 
+# rubyのシグナルハンドラでは、特にsignal-safeのような定義はない
+# http://comments.gmane.org/gmane.comp.lang.ruby.japanese/8076
 Signal.trap(:INT) {
   return
 }
