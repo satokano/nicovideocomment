@@ -13,6 +13,10 @@ require 'logger'
 require 'mongo'
 require 'zmq'
 
+Signal.trap(:INT) {
+  return
+}
+
 begin
   zmq_context = ZMQ::Context.new
   zmq_sock = zmq_context.socket(ZMQ::SUB)
