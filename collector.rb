@@ -3,7 +3,7 @@
 #
 # = ニコニコ生放送のコメントを収集する
 # Author:: Satoshi OKANO
-# Copyright:: Copyright 2011-2012 Satoshi OKANO
+# Copyright:: Copyright 2011-2013 Satoshi OKANO
 # License:: MIT
 #
 
@@ -39,7 +39,7 @@ alert_log = "./log/alert.log"
 comment_log = "./log/comment.log"
 debug_log = "./log/debug.log"
 gc_log = "./log/gc.log"
-gc_log_enabled = true
+gc_log_enabled = config["gc_log_enabled"] || false
 gc_log_interval = 1 # second
 children = config["children"] || 50
 zmq_enabled = config["zmq_enabled"]

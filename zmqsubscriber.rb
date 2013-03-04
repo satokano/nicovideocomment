@@ -3,7 +3,7 @@
 #
 # = ニコニコ生放送のコメントを、collector.rbからZeroMQ経由で受け取り（さらにバックエンドに投入する）
 # Author:: Satoshi OKANO
-# Copyright:: Copyright 2011-2012 Satoshi OKANO
+# Copyright:: Copyright 2011-2013 Satoshi OKANO
 # License:: MIT
 #
 
@@ -11,6 +11,7 @@ require 'rubygems'
 require 'json'
 require 'logger'
 require 'mongo'
+require 'yaml'
 require 'zmq'
 
 # rubyのシグナルハンドラでは、特にsignal-safeのような定義はない
@@ -19,10 +20,21 @@ Signal.trap(:INT) {
   return
 }
 
+# puts "[init] loading config..."
+config = YAML.load_file("config.yaml")
+# === configure
+zmq_uri = config["zmq_uri"] || "tcp://127.0.0.1:5000"
+mongo_ip = config["mongo_ip"] || "127.0.0.1"
+mongo_port = config["mongo_port"] || "27017"
+mongo_db = config["mongo_db"] || "niconico"
+mongo_collection = config["mongo_collection"] || "comments"
+
+# === configure end
+
 begin
   zmq_context = ZMQ::Context.new
   zmq_sock = zmq_context.socket(ZMQ::SUB)
-  zmq_sock.connect("tcp://127.0.0.1:5000")
+  zmq_sock.connect(zmq_uri)
   zmq_sock.setsockopt(ZMQ::SUBSCRIBE, "") # 全部受ける
   
   # zmq_sockの操作の前後で使う
@@ -35,7 +47,7 @@ rescue => exception
 end
 
 begin
-  mg_connection = Mongo::Connection.new("localhost", 27017)
+  mg_connection = Mongo::Connection.new(mongo_ip, mongo_port)
 rescue => exception
   puts "*** Mongo connection.new error: #{exception}\n"
   alog.error "Mongo connection.new error: #{exception}"
@@ -44,8 +56,8 @@ rescue => exception
 end
 
 begin
-  mg_db = mg_connection.db("niconico_comment")
-  mg_collection = mg_db.collection("ph0")
+  mg_db = mg_connection.db(mongo_db)
+  mg_collection = mg_db.collection(mongo_collection)
 rescue => exception
   puts "*** Mongo open DB or Collection error: #{exception}\n"
   alog.error "Mongo open DB or Collection error: #{exception}"

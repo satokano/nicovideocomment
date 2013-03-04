@@ -4,6 +4,7 @@
 片っ端からコメントを収集します。
 
 [![Build Status](https://travis-ci.org/satokano/nicovideocomment.png)](https://travis-ci.org/satokano/nicovideocomment)
+[![Code Climate](https://codeclimate.com/github/satokano/nicovideocomment.png)](https://codeclimate.com/github/satokano/nicovideocomment)
 
 インストール
 ------------
@@ -48,6 +49,7 @@ bundler対応、jemalloc対応を行ったので、以下の通り。
  - メモリ1GBのさくらVPS。スレッド数3000～程度で、スワップが多発してしまうらしい。
  - GCは特に頻発してるわけではなかった。
  - メモリ1GBでは、最大スレッド数（children）は2000～2500が上限と考えられる。
+- クラス使って無くてベタ書き。Code Climateの評価0。
 
 
 未実装だけど今後やってみたいこと

@@ -1,8 +1,15 @@
+# collector.rb
 login_mail: hogehoge@example.com
 login_password: p@ssw0rd
 children: 1000
 zmq_enabled: false
-gc_log_enabled: true
+gc_log_enabled: false
 mycommlist: 
   - co999999
 
+# zmqsubscriber.rb
+zmq_uri = "tcp://127.0.0.1:5000"
+mongo_ip = "127.0.0.1"
+mongo_port = "27017"
+mongo_db = "niconico"
+mongo_collection = "comments"
