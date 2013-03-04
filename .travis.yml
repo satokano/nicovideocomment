@@ -3,3 +3,5 @@ rvm:
   - "2.0.0"
   - "1.9.3"
   - "1.9.2"
+before_install: sudo aptitude search zmq
+after_failure: "cat /home/travis/.rvm/gems/ruby-2.0.0-rc1/gems/zmq-2.1.4/./gem_make.out"
