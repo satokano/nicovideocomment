@@ -3,7 +3,7 @@
 #
 # = ニコニコ生放送のコメントを収集する
 # Author:: Satoshi OKANO
-# Copyright:: Copyright 2011-2012 Satoshi OKANO
+# Copyright:: Copyright 2011-2013 Satoshi OKANO
 # License:: MIT
 #
 
