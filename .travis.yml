@@ -5,6 +5,6 @@ rvm:
   - "1.9.2"
 before_install: 
   - sudo aptitude search zmq
-  - sudo apt-get install -qq libzmq1 libzmq1-dev
+  - sudo apt-get install -qq libzmq-dev
 after_failure: "cat /home/travis/.rvm/gems/ruby-2.0.0-rc1/gems/zmq-2.1.4/./gem_make.out"
 after_script: "cat /home/travis/.rvm/gems/ruby-2.0.0-rc1/gems/zmq-2.1.4/./gem_make.out"
