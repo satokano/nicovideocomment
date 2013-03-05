@@ -77,7 +77,7 @@ bundler対応、jemalloc対応を行ったので、以下の通り。
 動作確認環境
 ------------
 
-主にLinux、ときどきFreeBSDで動作確認しています。GC.statを使っているためRuby 1.9.3が必要になります。
+手元では主にLinux、ときどきFreeBSDで動作確認しています。GC.statを使っているためRuby 1.9.3が必要になります。Travis CIではrvm 2.0.0, 1.9.3, 1.9.2を指定して確認しています。
 
     [okano@localhost nvc]$ uname -a
     Linux localhost.localdomain 2.6.18-274.12.1.el5 #1 SMP Tue Nov 29 13:37:46 EST 2011 x86_64 x86_64 x86_64 GNU/Linux
@@ -89,7 +89,7 @@ bundler対応、jemalloc対応を行ったので、以下の通り。
     ruby 1.9.3p0 (2011-10-30 revision 33570) [x86_64-linux]
 
 
-- ZeroMQは2.2.0。
+- ZeroMQは2系。2.1.x, 2.2.0ぐらいで確認しています。
 
 
 2011/11/30
