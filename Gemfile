@@ -7,7 +7,7 @@ gem "mechanize"
 gem "mongo"
 gem "nokogiri"
 gem "psych"
-gem "zmq"
+gem "ffi-rzmq"
 
 group :test do
   gem "rake"

@@ -12,7 +12,7 @@ require 'json'
 require 'logger'
 require 'mongo'
 require 'yaml'
-require 'zmq'
+require 'ffi-rzmq'
 
 # rubyのシグナルハンドラでは、特にsignal-safeのような定義はない
 # http://comments.gmane.org/gmane.comp.lang.ruby.japanese/8076
