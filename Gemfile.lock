@@ -53,6 +53,7 @@ PLATFORMS
   ruby
 
 DEPENDENCIES
+  bson
   bson_ext
   ffi-rzmq
   je

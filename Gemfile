@@ -1,7 +1,14 @@
 source "http://rubygems.org"
 
-gem "bson_ext"
-gem "je", :group => :linux
+platform :ruby do
+  gem "bson_ext"
+  gem "je", :group => :linux
+end
+
+platform :jruby do
+  gem "bson"
+end
+
 gem "json"
 gem "mechanize"
 gem "mongo"
@@ -13,3 +20,4 @@ group :test do
   gem "rake"
   gem "rspec"
 end
+
