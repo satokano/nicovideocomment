@@ -3,6 +3,7 @@ source "http://rubygems.org"
 platform :ruby do
   gem "bson_ext"
   gem "je", :group => :linux
+  gem "psych"
 end
 
 platform :jruby do
@@ -13,7 +14,6 @@ gem "json"
 gem "mechanize"
 gem "mongo"
 gem "nokogiri"
-gem "psych"
 gem "ffi-rzmq"
 
 group :test do
