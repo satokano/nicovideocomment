@@ -18,7 +18,8 @@ require 'json'
 require 'socket'
 require 'thread'
 require 'yaml'
-require 'zmq'
+#require 'zmq'
+require 'ffi-rzmq'
 
 def xpathvalue(xmldoc, path)
   temp = REXML::XPath.first(xmldoc, path)
