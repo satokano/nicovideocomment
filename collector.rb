@@ -18,7 +18,6 @@ require 'json'
 require 'socket'
 require 'thread'
 require 'yaml'
-#require 'zmq'
 require 'ffi-rzmq'
 
 def xpathvalue(xmldoc, path)
@@ -203,6 +202,7 @@ sock.each("\0") do |line|
 	  next
 	rescue => ex
 	  alog.error("getplayerstatus error(007)(lv#{liveid}): #{ex}")
+	  dlog.debug(ex.backtrace.join("\n"));
 	  next
 	end
 
@@ -223,7 +223,7 @@ sock.each("\0") do |line|
         # notloginのときは抜けるようにするか？
         gps_error_code = REXML::XPath.first(xmldoc, "//getplayerstatus/error/code").text
         case gps_error_code
-		when "require_community_member", "closed"
+		when "require_community_member", "closed", "deletedbyuser"
           # このへんはまあ気にせずともよかろう
           alog.warn "getplayerstatus error(006)(lv#{liveid}): #{gps_error_code}"
         else
