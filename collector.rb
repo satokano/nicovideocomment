@@ -3,7 +3,7 @@
 #
 # = ニコニコ生放送のコメントを収集する
 # Author:: Satoshi OKANO
-# Copyright:: Copyright 2011-2013 Satoshi OKANO
+# Copyright:: Copyright 2011-2014 Satoshi OKANO
 # License:: MIT
 #
 
@@ -97,11 +97,14 @@ comment_threads = Hash.new()
 
 
 #### Mechanizeを作成して、通信を開始する。
+# Chrome 33.0.1750.154m Windows7 64bitのUser Agentは以下
+# Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/33.0.1750.154 Safari/537.36
 agent = Mechanize.new
-
-# FreeBSD8ではSSLエラーがでた。
-# デフォルトで/etc/ssl/cert.pemが使われるので、そこからシンボリックリンクを張って回避
-# agent.ca_file = "/usr/local/share/certs/ca-root-nss.crt"
+agent.user_agent = "Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/33.0.1750.154 Safari/537.36"
+agent.keep_alive = false # 間欠的にAPIリクエストするだけなので無効の方がよいのではないか
+# agent.idle_timeout = 5 # defaultのまま
+agent.open_timeout = 5
+agent.read_timeout = 5
 
 #### Cookie準備
 print "[cookie_get] https login secure.nicolive.jp\n"
@@ -167,8 +170,16 @@ print("[getalertstatus] connect to: #{alertserver}:#{alertport} thread=#{alertth
 alog.info("getalertstatus alertserver=#{alertserver} alertport=#{alertport} alertthread=#{alertthread}");
 
 #### アラートサーバへの接続
-# TODO: 本来はアラートサーバ接続まわりのエラー処理も必要
-sock = TCPSocket.open(alertserver, alertport)
+begin
+  sock = TCPSocket.open(alertserver, alertport)
+  sock.setsockopt(Socket::SOL_SOCKET, Socket::SO_REUSEADDR, true)
+  sock.setsockopt(Socket::Option.linger(true, 1)) # close時1秒待ちとするlinger動作
+rescue => ex
+  sock.close if sock
+  alog.error("alertserver TCPSocket open error: #{ex}")
+  abort "alertserver TCPSocket open error"
+end
+
 sock.print "<thread thread=\"#{alertthread}\" version=\"20061206\" res_from=\"-1\">\0"
 sock.each("\0") do |line|
   liveid = ""
@@ -176,7 +187,7 @@ sock.each("\0") do |line|
   ownerid = ""
   
   if line.index("\0") == (line.length - 1) then
-	line = line[0..-2]
+    line = line[0..-2]
   end
   
   line.force_encoding("UTF-8")
@@ -189,22 +200,21 @@ sock.each("\0") do |line|
   alog.info(line)
   
   if mycommlist && mycommlist.include?(communityid) then
-	alog.warn("**** HIT MYCOMMLIST: #{communityid}")
+    alog.warn("**** HIT MYCOMMLIST: #{communityid}")
   end
 
   if comment_threads.size < children && line =~ /<chat/ && !comment_threads.has_key?(liveid) then
-	
     #### getplayerstatusでコメントサーバのIP,port,threadidを取ってくる
-	begin
-	  agent.get("http://live.nicovideo.jp/api/getplayerstatus?v=lv#{liveid}")
-	rescue Mechanize::ResponseCodeError => rce
-	  alog.error("getplayerstatus error(005)(lv#{liveid})(http #{rce.response_code})")
-	  next
-	rescue => ex
-	  alog.error("getplayerstatus error(007)(lv#{liveid}): #{ex}")
-	  dlog.debug(ex.backtrace.join("\n"));
-	  next
-	end
+    begin
+      agent.get("http://live.nicovideo.jp/api/getplayerstatus?v=lv#{liveid}")
+    rescue Mechanize::ResponseCodeError => rce
+      alog.error("getplayerstatus error(005)(lv#{liveid})(http #{rce.response_code})")
+      next
+    rescue => ex
+      alog.error("getplayerstatus error(007)(lv#{liveid}): #{ex}")
+      dlog.debug(ex.backtrace.join("\n"))
+      next
+    end
 
     begin
       xmldoc = REXML::Document.new agent.page.body
@@ -220,24 +230,26 @@ sock.each("\0") do |line|
         # <?xml version="1.0" encoding="utf-8"?>
         # <getplayerstatus status="fail" time="1313947751"><error><code>require_community_member</code></error></getplayerstatus>
         # require_community_member, closed, notlogin, deletedbyuser, unknown
-        # notloginのときは抜けるようにするか？
+        # TODO: notloginのときは抜けるようにするか？
         gps_error_code = REXML::XPath.first(xmldoc, "//getplayerstatus/error/code").text
         case gps_error_code
-		when "require_community_member", "closed", "deletedbyuser"
+        when "require_community_member", "closed", "deletedbyuser"
           # このへんはまあ気にせずともよかろう
           alog.warn "getplayerstatus error(006)(lv#{liveid}): #{gps_error_code}"
         else
           # unknownとかは気にしたい
           alog.error "getplayerstatus error(008)(lv#{liveid}): #{gps_error_code}"
         end
-        next # sock.each("\0") do |line| の次回に進む
+
+        next # アラートサーバからの次回の受信、つまり sock.each("\0") do |line| の次回に進む
       end
     rescue => exp
       puts "REXML::XPath.first().value error, xmldoc: #{xmldoc}, Exception: #{exp}\n"
       alog.error("REXML::XPath.first().value error, xmldoc: #{xmldoc}, Exception: #{exp}")
+      dlog.debug(exp.backtrace.join("\n"))
       next
     end
-	
+
     #### コメントサーバへ接続
     commentserver = REXML::XPath.first(xmldoc, "/getplayerstatus/ms/addr").text
     commentport = REXML::XPath.first(xmldoc, "/getplayerstatus/ms/port").text
@@ -248,58 +260,65 @@ sock.each("\0") do |line|
       dlog.debug("#{comment_threads.size}: #{comment_threads.keys.sort}")
 
       begin
+        # TODO: このソケットを集約したい
         sock2 = TCPSocket.open(cserv, cport) # :external_encoding => "UTF-8"
+        sock2.setsockopt(Socket::SOL_SOCKET, Socket::SO_REUSEADDR, true)
+        sock2.setsockopt(Socket::Option.linger(true, 1)) # close時1秒待ちとするlinger動作
       rescue => exception
         sock2.close if sock2
+        comment_threads.delete(lid)
         alog.error "comment server socket open error (threads#{comment_threads.size}): #{cserv} #{cport} #{exception}"
-		comment_threads.delete(lid)
+        dlog.debug(exception.backtrace.join("\n"))
         break # その受信待ちスレッドはあきらめて異常終了扱い、Thread.newを抜ける。
       end
 
       alog.info("connect to: #{cserv}:#{cport} thread=#{cth}")
 
       begin
-        #### 最初にこの合図を送信してやる
-        sock2.print "<thread thread=\"#{cth}\" version=\"20061206\" res_from=\"-100\"/>\0"
+        #### 最初にこの合図を送信してやる scoresはNG共有のスコアを受け取るため
+        sock2.print "<thread thread=\"#{cth}\" version=\"20061206\" res_from=\"-1000\" scores=\"1\"/>\0"
       rescue => exception
-        puts "**** comment server socket print error (threads#{comment_threads.size}): #{cserv} #{cport} #{exception}\n"
-        alog.error "comment server socket print error (threads#{comment_threads.size}): #{cserv} #{cport} #{exception}"
         sock2.close if sock2
         comment_threads.delete(lid)
-		break # その受信待ちスレッドはあきらめて異常終了扱い、Thread.newを抜ける。
+        puts "**** comment server socket print error (threads#{comment_threads.size}): #{cserv} #{cport} #{exception}\n"
+        alog.error "comment server socket print error (threads#{comment_threads.size}): #{cserv} #{cport} #{exception}"
+        dlog.debug(exception.backtrace.join("\n"))
+        break # その受信待ちスレッドはあきらめて異常終了扱い、Thread.newを抜ける。
       end
 
       begin
         #### 受信待ち
-        sock2.each("\0") do |line|
-          if line.index("\0") == (line.length - 1) then
-            line = line[0..-2]
+        sock2.each("\0") do |line2|
+          if line2.index("\0") == (line2.length - 1) then
+            line2 = line2[0..-2]
           end
 
-          line.force_encoding("UTF-8")
+          line2.force_encoding("UTF-8")
 
-          clog.info line
+          clog.info line2
 
-          if line =~ /chat/ then
-            xdoc = REXML::Document.new line
+          if line2 =~ /chat/ then
+            xdoc = REXML::Document.new line2
             message = Hash.new
             message["text"] = REXML::XPath.first(xdoc, "//chat").text
             message["thread"] = xpathvalue(xdoc, "//chat/attribute::thread")
             message["no"] = xpathvalue(xdoc, "//chat/attribute::no")
-            message["vpos"] = xpathvalue(xdoc, "//chat/attribute::vpos")
-            message["date"] = xpathvalue(xdoc, "//chat/attribute::date")
-            message["mail"] = xpathvalue(xdoc, "//chat/attribute::mail")
+            #message["vpos"] = xpathvalue(xdoc, "//chat/attribute::vpos")
+            #message["date"] = xpathvalue(xdoc, "//chat/attribute::date")
+            #message["date_usec"] = xpathvalue(xdoc, "//chat/attribute::date_usec")
+            #message["mail"] = xpathvalue(xdoc, "//chat/attribute::mail")
             message["user_id"] = xpathvalue(xdoc, "//chat/attribute::user_id")
-            message["premium"] = xpathvalue(xdoc, "//chat/attribute::premium")
-            message["anonymity"] = xpathvalue(xdoc, "//chat/attribute::anonymity")
-            message["locale"] = xpathvalue(xdoc, "//chat/attribute::locale")
-            puts "[" + message["thread"] + "] ["+ message["user_id"] + "] "+ message["text"] + "\n"
+            #message["premium"] = xpathvalue(xdoc, "//chat/attribute::premium")
+            #message["anonymity"] = xpathvalue(xdoc, "//chat/attribute::anonymity")
+            #message["locale"] = xpathvalue(xdoc, "//chat/attribute::locale")
+            #message["score"] = xpathvalue(xdoc, "//chat/attribute::score")
+            puts "[" + message["thread"] + "] [" + message["no"] + "] [" + message["user_id"] + "] "+ message["text"] + "\n"
             
             # zmq send
             if zmq_enabled then
               begin
                 zmq_semaphore.synchronize do # TODO: synchronizeしてたら意味ない？？？
-                  zmq_sock.send("allmsg #{message.to_json}") # jsonとするか他の形式にするか
+                  zmq_sock.send("allmsg #{message.to_json}") # TODO: jsonとするか、line2をそのまま入れるか、他の形式にするか
                 end
               rescue => exception
                 puts "**** ZMQ send error: #{exception}\n"
@@ -309,11 +328,12 @@ sock.each("\0") do |line|
             
           end
 
-          if line =~ /\/disconnect/ then
+          if line2 =~ /\/disconnect/ then
             puts "**** DISCONNECT: #{lid} ****\n"
             alog.info("disconnect: #{lid}")
             # TODO: zmq_sockのclose？
             sock2.close if sock2
+            sock2 = nil # ？？
             comment_threads.delete(lid)
             break # その受信待ちスレッドは終了でよいから、sock2.eachを抜けて、Thread.newも抜ける。break
           end
@@ -330,4 +350,3 @@ sock.each("\0") do |line|
 
   end # of if comment_threads.size < children ...
 end
-
