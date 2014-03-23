@@ -173,7 +173,7 @@ alog.info("getalertstatus alertserver=#{alertserver} alertport=#{alertport} aler
 begin
   sock = TCPSocket.open(alertserver, alertport)
   sock.setsockopt(Socket::SOL_SOCKET, Socket::SO_REUSEADDR, true)
-  sock.setsockopt(Socket::Option.linger(true, 1)) # close時1秒待ちとするlinger動作
+  # sock.setsockopt(Socket::Option.linger(true, 1)) # close時1秒待ちとするlinger動作
 rescue => ex
   sock.close if sock
   alog.error("alertserver TCPSocket open error: #{ex}")
@@ -263,13 +263,13 @@ sock.each("\0") do |line|
         # TODO: このソケットを集約したい
         sock2 = TCPSocket.open(cserv, cport) # :external_encoding => "UTF-8"
         sock2.setsockopt(Socket::SOL_SOCKET, Socket::SO_REUSEADDR, true)
-        sock2.setsockopt(Socket::Option.linger(true, 1)) # close時1秒待ちとするlinger動作
+        # sock2.setsockopt(Socket::Option.linger(true, 1)) # close時1秒待ちとするlinger動作
       rescue => exception
         sock2.close if sock2
         comment_threads.delete(lid)
         alog.error "comment server socket open error (threads#{comment_threads.size}): #{cserv} #{cport} #{exception}"
         dlog.debug(exception.backtrace.join("\n"))
-        break # その受信待ちスレッドはあきらめて異常終了扱い、Thread.newを抜ける。
+        break # その受信待ちスレッドはあきらめて異常終了扱い、Thread.newを抜ける。breakじゃおかしい？
       end
 
       alog.info("connect to: #{cserv}:#{cport} thread=#{cth}")
