@@ -4,4 +4,6 @@ alert.log*
 gc.log*
 mech_cookie.yaml
 config.yaml
+vendor
 ./scraper/config.yaml
+./scraper/vendor
