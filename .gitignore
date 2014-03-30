@@ -3,4 +3,5 @@ debug.log*
 alert.log*
 gc.log*
 mech_cookie.yaml
-
+config.yaml
+./scraper/config.yaml
