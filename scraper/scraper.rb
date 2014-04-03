@@ -36,6 +36,7 @@ class RssScraper
     @login_mail = config["login_mail"]
     @login_password = config["login_password"]
     @bunny_enabled = config["bunny_enabled"]
+    @bunny_routing_key = config["bunny_routing_key"]
   end
 
   def xpathtext(xmlnode, path)
@@ -83,7 +84,7 @@ class RssScraper
         guid = xpathtext(item, ".//guid")
         puts "#{guid} #{owner_name} #{community_name} #{title} #{member_only}\n"
         if @bunny_enabled then
-          @bunnyexchange.publish("#{guid}", :routing_key => "liveid")
+          @bunnyexchange.publish("#{guid}", :routing_key => @bunny_routing_key)
         end
       }
     }
