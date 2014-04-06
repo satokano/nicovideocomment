@@ -8,17 +8,25 @@
 #
 
 require 'rubygems'
-require 'cgi'
+#require 'cgi'
 require 'mechanize'
 require 'kconv'
 require 'logger'
-require 'rexml/document'
-require 'psych'
+#require 'rexml/document'
 require 'json'
 require 'socket'
 require 'thread'
 require 'yaml'
 require 'ffi-rzmq'
+
+def xpathtext(xmlnode, path)
+  @temp = xmlnode.xpath(path)
+  if @temp.nil?
+    ""
+  else
+    @temp.text
+  end
+end
 
 def xpathvalue(xmldoc, path)
   temp = REXML::XPath.first(xmldoc, path)
@@ -134,12 +142,14 @@ end
 
 agent.cookie_jar.save_as('mech_cookie.yaml')
 
-xmldoc = REXML::Document.new agent.page.body
+#xmldoc = REXML::Document.new agent.page.body
 
-if REXML::XPath.first(xmldoc, "//nicovideo_user_response/attribute::status").value !~ /ok/ then
+if agent.page.at("//nicovideo_user_response/attribute::status").text !~ /ok/ then
+#if REXML::XPath.first(xmldoc, "//nicovideo_user_response/attribute::status").value !~ /ok/ then
   abort "ログインエラー(002)\n"
 end
-ticketstr = REXML::XPath.first(xmldoc, "//ticket").text
+#ticketstr = REXML::XPath.first(xmldoc, "//ticket").text
+ticketstr = agent.page.at("//ticket").text
 
 #### getalertstatus まずはアラートサーバのIP、ポートをもらってくる
 begin
@@ -152,20 +162,25 @@ rescue => ex
   abort
 end
 
-xmldoc = REXML::Document.new agent.page.body
-if REXML::XPath.first(xmldoc, "//getalertstatus/attribute::status").value !~ /ok/ then
+#xmldoc = REXML::Document.new agent.page.body
+if agent.page.at("//getalertstatus/attribute::status").text !~ /ok/ then
+#if REXML::XPath.first(xmldoc, "//getalertstatus/attribute::status").value !~ /ok/ then
   p agent.page.body
   abort "getalertstatusエラー(004)\n"
 end
 
-REXML::XPath.each(xmldoc, "//community_id") {|ele|
+agent.page.search("//community_id").each {|ele|
+#REXML::XPath.each(xmldoc, "//community_id") {|ele|
   mycommlist.push ele.text
 }
 
 print "[getalertstatus] OK\n"
-alertserver = REXML::XPath.first(xmldoc, "/getalertstatus/ms/addr").text
-alertport = REXML::XPath.first(xmldoc, "/getalertstatus/ms/port").text
-alertthread = REXML::XPath.first(xmldoc, "/getalertstatus/ms/thread").text
+alertserver = agent.page.at("/getalertstatus/ms/addr").text
+#alertserver = REXML::XPath.first(xmldoc, "/getalertstatus/ms/addr").text
+alertport = agent.page.at("/getalertstatus/ms/port").text
+#alertport = REXML::XPath.first(xmldoc, "/getalertstatus/ms/port").text
+alertthread = agent.page.at("/getalertstatus/ms/thread").text
+#alertthread = REXML::XPath.first(xmldoc, "/getalertstatus/ms/thread").text
 print("[getalertstatus] connect to: #{alertserver}:#{alertport} thread=#{alertthread}\n")
 alog.info("getalertstatus alertserver=#{alertserver} alertport=#{alertport} alertthread=#{alertthread}");
 
@@ -216,22 +231,24 @@ sock.each("\0") do |line|
       next
     end
 
-    begin
-      xmldoc = REXML::Document.new agent.page.body
-    rescue => exp
-      puts "REXML::Document.new error, agent.page.body: #{agent.page.body}, Exception: #{exp}\n"
-      xmldoc = REXML::Document.new CGI.escape(agent.page.body)
-      # ここですでにnextするべきなのか？
-    end
+#    begin
+#      xmldoc = REXML::Document.new agent.page.body
+#    rescue => exp
+#      puts "REXML::Document.new error, agent.page.body: #{agent.page.body}, Exception: #{exp}\n"
+#      xmldoc = REXML::Document.new CGI.escape(agent.page.body)
+#      # ここですでにnextするべきなのか？
+#    end
 
     begin
-      if REXML::XPath.first(xmldoc, "//getplayerstatus/attribute::status").value !~ /ok/ then
+      if agent.page.at("//getplayerstatus/attribute::status").text !~ /ok/ then
+      #if REXML::XPath.first(xmldoc, "//getplayerstatus/attribute::status").value !~ /ok/ then
         # コミュ限とか
         # <?xml version="1.0" encoding="utf-8"?>
         # <getplayerstatus status="fail" time="1313947751"><error><code>require_community_member</code></error></getplayerstatus>
         # require_community_member, closed, notlogin, deletedbyuser, unknown
         # TODO: notloginのときは抜けるようにするか？
-        gps_error_code = REXML::XPath.first(xmldoc, "//getplayerstatus/error/code").text
+        gps_error_code = agent.page.at("//getplayerstatus/error/code").text
+        #gps_error_code = REXML::XPath.first(xmldoc, "//getplayerstatus/error/code").text
         case gps_error_code
         when "require_community_member", "closed", "deletedbyuser"
           # このへんはまあ気にせずともよかろう
@@ -251,9 +268,12 @@ sock.each("\0") do |line|
     end
 
     #### コメントサーバへ接続
-    commentserver = REXML::XPath.first(xmldoc, "/getplayerstatus/ms/addr").text
-    commentport = REXML::XPath.first(xmldoc, "/getplayerstatus/ms/port").text
-    commentthread = REXML::XPath.first(xmldoc, "/getplayerstatus/ms/thread").text
+    commentserver = agent.page.at("/getplayerstatus/ms/addr").text
+    #commentserver = REXML::XPath.first(xmldoc, "/getplayerstatus/ms/addr").text
+    commentport = agent.page.at("/getplayerstatus/ms/port").text
+    #commentport = REXML::XPath.first(xmldoc, "/getplayerstatus/ms/port").text
+    commentthread = agent.page.at("/getplayerstatus/ms/thread").text
+    #commentthread = REXML::XPath.first(xmldoc, "/getplayerstatus/ms/thread").text
 
     # 放送枠ごとにThread生成
     comment_threads[liveid] = Thread.new(liveid, commentserver, commentport, commentthread) do |lid, cserv, cport, cth|
@@ -298,16 +318,18 @@ sock.each("\0") do |line|
           clog.info line2
 
           if line2 =~ /chat/ then
-            xdoc = REXML::Document.new line2
+            xdoc = Nokogiri::XML::Document.parse line2
+            #xdoc = REXML::Document.new line2
             message = Hash.new
-            message["text"] = REXML::XPath.first(xdoc, "//chat").text
-            message["thread"] = xpathvalue(xdoc, "//chat/attribute::thread")
-            message["no"] = xpathvalue(xdoc, "//chat/attribute::no")
+            message["text"] = xpathtext(xdoc, "//chat")
+            #message["text"] = REXML::XPath.first(xdoc, "//chat").text
+            message["thread"] = xpathtext(xdoc, "//chat/attribute::thread")
+            message["no"] = xpathtext(xdoc, "//chat/attribute::no")
             #message["vpos"] = xpathvalue(xdoc, "//chat/attribute::vpos")
             #message["date"] = xpathvalue(xdoc, "//chat/attribute::date")
             #message["date_usec"] = xpathvalue(xdoc, "//chat/attribute::date_usec")
             #message["mail"] = xpathvalue(xdoc, "//chat/attribute::mail")
-            message["user_id"] = xpathvalue(xdoc, "//chat/attribute::user_id")
+            message["user_id"] = xpathtext(xdoc, "//chat/attribute::user_id")
             #message["premium"] = xpathvalue(xdoc, "//chat/attribute::premium")
             #message["anonymity"] = xpathvalue(xdoc, "//chat/attribute::anonymity")
             #message["locale"] = xpathvalue(xdoc, "//chat/attribute::locale")
