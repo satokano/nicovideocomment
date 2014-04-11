@@ -30,7 +30,7 @@ class RmqCollector
   end
 
   def load_config()
-    puts "[init] loading config..."
+    puts "[load_config] loading config..."
     @config = YAML.load_file("config.yaml")
 
     @mycommlist = @config["mycommlist"]
@@ -43,6 +43,7 @@ class RmqCollector
     @bunny_routing_key = @config["bunny_routing_key"]
     @children = @config["children"] || 50
     @zmq_enabled = @config["zmq_enabled"]
+    puts "[load_config] done"
   end
 
   def setup_logger()
@@ -87,7 +88,7 @@ class RmqCollector
     agent.read_timeout = 5
 
     #### Cookie準備
-    print "[cookie_get] https login secure.nicolive.jp\n"
+    puts "[setup_mechanize] https login secure.nicolive.jp\n"
     begin
       agent.post('https://secure.nicovideo.jp/secure/login?site=nicolive', {:next_url => "", :mail => @config["login_mail"], :password => @config["login_password"]})
     rescue Mechanize::ResponseCodeError => rce
@@ -99,6 +100,8 @@ class RmqCollector
       puts ex.to_s
       abort
     end
+
+    puts "[setup_mechanize] end\n"
 
     # #### ログインしてticket取得
     # puts "[login] nicolive_antenna"
@@ -146,18 +149,18 @@ class RmqCollector
         case gps_error_code
         when "require_community_member", "closed", "deletedbyuser"
           # このへんはまあ気にせずともよかろう
-          alog.warn "getplayerstatus error(006)(lv#{liveid}): #{gps_error_code}"
+          @alog.warn "getplayerstatus error(006)(lv#{liveid}): #{gps_error_code}"
         else
           # unknownとかは気にしたい
-          alog.error "getplayerstatus error(008)(lv#{liveid}): #{gps_error_code}"
+          @alog.error "getplayerstatus error(008)(lv#{liveid}): #{gps_error_code}"
         end
 
         next # アラートサーバからの次回の受信、つまり sock.each("\0") do |line| の次回に進む
       end
     rescue => exp
       puts "at(\"//getplayerstatus/attribute::status\") error, xmldoc: #{xmldoc}, Exception: #{exp}\n"
-      alog.error("at(\"//getplayerstatus/attribute::status\") error, xmldoc: #{xmldoc}, Exception: #{exp}")
-      dlog.debug(exp.backtrace.join("\n"))
+      @alog.error("at(\"//getplayerstatus/attribute::status\") error, xmldoc: #{xmldoc}, Exception: #{exp}")
+      @dlog.debug(exp.backtrace.join("\n"))
       next
     end
 
@@ -178,12 +181,12 @@ class RmqCollector
     rescue => exception
       sock2.close if sock2
       #comment_threads.delete(lid)
-      alog.error "comment server socket open error : #{commentserver} #{commentport} #{exception}"
-      dlog.debug(exception.backtrace.join("\n"))
+      @alog.error "comment server socket open error : #{commentserver} #{commentport} #{exception}"
+      @dlog.debug(exception.backtrace.join("\n"))
       return #break # その受信待ちスレッドはあきらめて異常終了扱い、Thread.newを抜ける。breakじゃおかしい？
     end
 
-    alog.info("connect to: #{commentserver}:#{commentport} thread=#{commentthread}")
+    @alog.info("connect to: #{commentserver}:#{commentport} thread=#{commentthread}")
 
     begin
       #### 最初にこの合図を送信してやる scoresはNG共有のスコアを受け取るため
@@ -192,8 +195,8 @@ class RmqCollector
       sock2.close if sock2
       #comment_threads.delete(lid)
       puts "**** comment server socket print error : #{commentserver} #{commentport} #{exception}\n"
-      alog.error "comment server socket print error : #{commentserver} #{commentport} #{exception}"
-      dlog.debug(exception.backtrace.join("\n"))
+      @alog.error "comment server socket print error : #{commentserver} #{commentport} #{exception}"
+      @dlog.debug(exception.backtrace.join("\n"))
       return #break # その受信待ちスレッドはあきらめて異常終了扱い、Thread.newを抜ける。
     end
 
@@ -206,7 +209,7 @@ class RmqCollector
 
         line2.force_encoding("UTF-8")
 
-        clog.info line2
+        @clog.info line2
 
         if line2 =~ /chat/ then
           xdoc = Nokogiri::XML::Document.parse line2
@@ -234,14 +237,14 @@ class RmqCollector
               end
             rescue => exception
               puts "**** ZMQ send error: #{exception}\n"
-              alog.error "ZMQ send error: #{exception}"
+              @alog.error "ZMQ send error: #{exception}"
             end
           end
         end
 
         if line2 =~ /\/disconnect/ then
           puts "**** DISCONNECT: #{lid} ****\n"
-          alog.info("disconnect: #{lid}")
+          @alog.info("disconnect: #{lid}")
           # TODO: zmq_sockのclose？
           sock2.close if sock2
           sock2 = nil # ？？
@@ -251,7 +254,7 @@ class RmqCollector
       end # of sock2.each
     rescue => exception
       puts "**** comment server socket read(each) error : #{commentserver} #{commentport} #{exception}\n"
-      alog.error "comment server socket read(each) error : #{commentserver} #{commentport} #{exception}"
+      @alog.error "comment server socket read(each) error : #{commentserver} #{commentport} #{exception}"
       # TODO: zmq_sockのclose？
       sock2.close if sock2
       #comment_threads.delete(lid)
@@ -263,14 +266,18 @@ class RmqCollector
     setup_logger
     setup_mechanize
 
+    puts "setup_mechanize done.\n"
+
     bunnyconn = Bunny.new(:host => "192.168.100.6")
     bunnyconn.start
     bunnychannel = bunnyconn.create_channel
-    bunnyqueue = bunnychannel.queue("#{@bunny_routing_key}")
+    bunnyqueue = bunnychannel.queue("#{@bunny_routing_key}", :durable => true)
 
     bunnyqueue.subscribe() do |delivery_info, properties, body|
       doCollect_child body
     end
+
+    puts "RabbiMQ queue #{@bunny_routing_key} subscribe end.\n"
 
   end
 
