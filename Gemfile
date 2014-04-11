@@ -14,6 +14,7 @@ gem "mechanize"
 gem "mongo"
 gem "nokogiri"
 gem "ffi-rzmq"
+gem "bunny"
 
 group :test do
   gem "rake"

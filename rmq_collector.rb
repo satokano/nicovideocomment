@@ -15,6 +15,7 @@ require 'json'
 require 'socket'
 require 'thread'
 require 'yaml'
+require 'bunny'
 require 'ffi-rzmq'
 
 class RmqCollector
@@ -39,7 +40,7 @@ class RmqCollector
     @debug_log = "./log/debug.log"
     @gc_log = "./log/gc.log"
     @gc_log_interval = 1 # second
-    @bunny_routing_key = config["bunny_routing_key"]
+    @bunny_routing_key = @config["bunny_routing_key"]
     @children = @config["children"] || 50
     @zmq_enabled = @config["zmq_enabled"]
   end
@@ -265,7 +266,7 @@ class RmqCollector
     bunnyconn = Bunny.new(:host => "192.168.100.6")
     bunnyconn.start
     bunnychannel = bunnyconn.create_channel
-    bunnyqueue = bunnychannel.queue("#{bunny_routing_key}")
+    bunnyqueue = bunnychannel.queue("#{@bunny_routing_key}")
 
     bunnyqueue.subscribe() do |delivery_info, properties, body|
       doCollect_child body
