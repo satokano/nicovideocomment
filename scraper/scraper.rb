@@ -63,7 +63,23 @@ class RssScraper
       abort
     end
 
-    @agent.get("http://live.nicovideo.jp/recent/rss")
+    begin
+      @agent.get("http://live.nicovideo.jp/recent/rss")
+    rescue Mechanize::ResponseCodeError => rce
+      puts "RSS取得エラー: #{rce.response_code}\n"
+      p @agent.page
+      abort
+    rescue => ex
+      puts "RSS取得エラー: #{ex.to_s}\n"
+      puts ex.backtrace
+      abort
+    end
+
+    if !(@agent.page.at("//rss/channel/nicolive:total_count").text) then
+      puts "RSS取得エラー（放送中の全枠数が取得できませんでした）\n"
+      p @agent.page
+      abort
+    end
 
     @total_count = @agent.page.at("//rss/channel/nicolive:total_count").text.to_i
     # puts "現在放送中 #{total_count}\n"
