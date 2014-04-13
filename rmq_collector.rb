@@ -80,20 +80,20 @@ class RmqCollector
     #### Mechanizeを作成して、通信を開始する。
     # Chrome 33.0.1750.154m Windows7 64bitのUser Agentは以下
     # Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/33.0.1750.154 Safari/537.36
-    agent = Mechanize.new
-    agent.user_agent = "Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/33.0.1750.154 Safari/537.36"
-    agent.keep_alive = false # 間欠的にAPIリクエストするだけなので無効の方がよいのではないか
+    @agent = Mechanize.new
+    @agent.user_agent = "Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/33.0.1750.154 Safari/537.36"
+    @agent.keep_alive = false # 間欠的にAPIリクエストするだけなので無効の方がよいのではないか
     # agent.idle_timeout = 5 # defaultのまま
-    agent.open_timeout = 5
-    agent.read_timeout = 5
+    @agent.open_timeout = 5
+    @agent.read_timeout = 5
 
     #### Cookie準備
     puts "[setup_mechanize] https login secure.nicolive.jp\n"
     begin
-      agent.post('https://secure.nicovideo.jp/secure/login?site=nicolive', {:next_url => "", :mail => @config["login_mail"], :password => @config["login_password"]})
+      @agent.post('https://secure.nicovideo.jp/secure/login?site=nicolive', {:next_url => "", :mail => @config["login_mail"], :password => @config["login_password"]})
     rescue Mechanize::ResponseCodeError => rce
       puts "ログインエラー: #{rce.response_code}\n"
-      p agent.page.body
+      p @agent.page.body
       abort
     rescue => ex
       puts "ログインエラー:\n"
@@ -125,33 +125,45 @@ class RmqCollector
 
 
   def doCollect_child(liveid)
+    puts "[doCollect_child] start: #{liveid}\n"
 
     #### getplayerstatusでコメントサーバのIP,port,threadidを取ってくる
     begin
       @agent.get("http://live.nicovideo.jp/api/getplayerstatus?v=lv#{liveid}")
     rescue Mechanize::ResponseCodeError => rce
+      puts "responsecodeerror\n"
       @alog.error("getplayerstatus error(005)(lv#{liveid})(http #{rce.response_code})")
-      next
+      abort
+      #next
     rescue => ex
+      puts "other error\n"
+      puts ex.to_s
+      temp = ex.backtrace.join("\n")
+      puts "#{temp}\n"
       @alog.error("getplayerstatus error(007)(lv#{liveid}): #{ex}")
       @dlog.debug(ex.backtrace.join("\n"))
-      next
+      abort
+      #next
     end
 
+    puts "hoge\n"
+
     begin
-      if agent.page.at("//getplayerstatus/attribute::status").text !~ /ok/ then
+      if @agent.page.at("//getplayerstatus/attribute::status").text !~ /ok/ then
         # コミュ限とか
         # <?xml version="1.0" encoding="utf-8"?>
         # <getplayerstatus status="fail" time="1313947751"><error><code>require_community_member</code></error></getplayerstatus>
         # require_community_member, closed, notlogin, deletedbyuser, unknown
         # TODO: notloginのときは抜けるようにするか？
-        gps_error_code = agent.page.at("//getplayerstatus/error/code").text
+        gps_error_code = @agent.page.at("//getplayerstatus/error/code").text
         case gps_error_code
         when "require_community_member", "closed", "deletedbyuser"
+          puts "require community member\n"
           # このへんはまあ気にせずともよかろう
           @alog.warn "getplayerstatus error(006)(lv#{liveid}): #{gps_error_code}"
         else
           # unknownとかは気にしたい
+          puts "unknown error"
           @alog.error "getplayerstatus error(008)(lv#{liveid}): #{gps_error_code}"
         end
 
@@ -164,10 +176,12 @@ class RmqCollector
       next
     end
 
+    puts "hogehoge\n"
+
     #### コメントサーバへ接続
-    commentserver = agent.page.at("/getplayerstatus/ms/addr").text
-    commentport = agent.page.at("/getplayerstatus/ms/port").text
-    commentthread = agent.page.at("/getplayerstatus/ms/thread").text
+    commentserver = @agent.page.at("/getplayerstatus/ms/addr").text
+    commentport = @agent.page.at("/getplayerstatus/ms/port").text
+    commentthread = @agent.page.at("/getplayerstatus/ms/thread").text
 
     # 放送枠ごとにThread生成
     #comment_threads[liveid] = Thread.new(liveid, commentserver, commentport, commentthread) do |lid, cserv, cport, cth|
@@ -185,6 +199,8 @@ class RmqCollector
       @dlog.debug(exception.backtrace.join("\n"))
       return #break # その受信待ちスレッドはあきらめて異常終了扱い、Thread.newを抜ける。breakじゃおかしい？
     end
+
+    puts "before alog.info\n"
 
     @alog.info("connect to: #{commentserver}:#{commentport} thread=#{commentthread}")
 
@@ -266,7 +282,7 @@ class RmqCollector
     setup_logger
     setup_mechanize
 
-    puts "setup_mechanize done.\n"
+    puts "[doCollect] setup_mechanize done.\n"
 
     bunnyconn = Bunny.new(:host => "192.168.100.6")
     bunnyconn.start
@@ -274,10 +290,11 @@ class RmqCollector
     bunnyqueue = bunnychannel.queue("#{@bunny_routing_key}", :durable => true)
 
     bunnyqueue.subscribe() do |delivery_info, properties, body|
+      puts "#{body}\n"
       doCollect_child body
     end
 
-    puts "RabbiMQ queue #{@bunny_routing_key} subscribe end.\n"
+    puts "[doCollect] RabbitMQ queue #{@bunny_routing_key} subscribe end.\n"
 
   end
 
@@ -291,3 +308,4 @@ end
 
 rcol = RmqCollector.new
 rcol.doCollect
+
