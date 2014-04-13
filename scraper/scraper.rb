@@ -23,7 +23,7 @@ class RssScraper
     @agent.read_timeout = 5
 
     if @bunny_enabled then
-      @bunnyconn = Bunny.new(:host => "192.168.100.6")
+      @bunnyconn = Bunny.new(:host => @bunny_ip)
       @bunnyconn.start
       @bunnychannel = @bunnyconn.create_channel
       @bunnyexchange = @bunnychannel.default_exchange
@@ -36,6 +36,7 @@ class RssScraper
     @login_mail = config["login_mail"]
     @login_password = config["login_password"]
     @bunny_enabled = config["bunny_enabled"]
+    @bunny_ip = config["bunny_ip"]
     @bunny_routing_key = config["bunny_routing_key"]
   end
 
