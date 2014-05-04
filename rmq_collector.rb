@@ -40,6 +40,7 @@ class RmqCollector
     @debug_log = "./log/debug.log"
     @gc_log = "./log/gc.log"
     @gc_log_interval = 1 # second
+    @bunny_ip = @config["bunny_ip"]
     @bunny_routing_key = @config["bunny_routing_key"]
     @children = @config["children"] || 50
     @zmq_enabled = @config["zmq_enabled"]
@@ -284,7 +285,7 @@ class RmqCollector
 
     puts "[doCollect] setup_mechanize done.\n"
 
-    bunnyconn = Bunny.new(:host => "192.168.100.6")
+    bunnyconn = Bunny.new(:host => @bunny_ip)
     bunnyconn.start
     bunnychannel = bunnyconn.create_channel
     bunnyqueue = bunnychannel.queue("#{@bunny_routing_key}", :durable => true)
