@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 # 
+# = ニコニコ生放送 ユーザ生（recent）のRSSを読み込んで内容を表示、RabbitMQにpublishする
 # Author:: Satoshi OKANO
 # Copyright:: Copyright 2011-2014 Satoshi OKANO
 # License:: MIT
@@ -87,6 +88,7 @@ class RssScraper
     @itemsperpage = @agent.page.search("//rss/channel/item").length.to_i
     @pages = (@total_count.quo(@itemsperpage)).ceil
     @member_only_count = 0
+    @total_count_actual = 0
 
     @pages.downto(1) {|num|
       @agent.get("http://live.nicovideo.jp/recent/rss?p=#{num}")
@@ -100,13 +102,15 @@ class RssScraper
         end
         guid = xpathtext(item, ".//guid")
         puts "#{guid} #{owner_name} #{community_name} #{title} #{member_only}\n"
+        @total_count_actual += 1
         if @bunny_enabled then
           @bunnyexchange.publish("#{guid}", :routing_key => @bunny_routing_key)
         end
       }
     }
 
-    puts "#{@member_only_count} / #{@total_count}\n"
+    puts "合計件数(RSS情報): #{@total_count}\n"
+    puts "合計件数(実績): #{@total_count_actual} / コミュ限: #{@member_only_count} / 公開: #{@total_count_actual - @member_only_count}\n"
 
     if @bunny_enabled then
       @bunnyconn.close
