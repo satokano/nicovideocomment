@@ -103,7 +103,7 @@ class RssScraper
         guid = xpathtext(item, ".//guid")
         puts "#{guid} #{owner_name} #{community_name} #{title} #{member_only}\n"
         @total_count_actual += 1
-        if @bunny_enabled then
+        if @bunny_enabled and !member_only then
           @bunnyexchange.publish("#{guid}", :routing_key => @bunny_routing_key)
         end
       }
