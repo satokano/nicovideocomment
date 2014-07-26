@@ -16,7 +16,6 @@ require 'socket'
 require 'thread'
 require 'yaml'
 require 'bunny'
-require 'ffi-rzmq'
 
 class RmqCollector
 
@@ -43,7 +42,6 @@ class RmqCollector
     @bunny_ip = @config["bunny_ip"]
     @bunny_routing_key = @config["bunny_routing_key"]
     @children = @config["children"] || 50
-    @zmq_enabled = @config["zmq_enabled"]
     puts "[load_config] done"
   end
 
@@ -85,8 +83,8 @@ class RmqCollector
     @agent.user_agent = "Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/33.0.1750.154 Safari/537.36"
     @agent.keep_alive = false # 間欠的にAPIリクエストするだけなので無効の方がよいのではないか
     # agent.idle_timeout = 5 # defaultのまま
-    @agent.open_timeout = 5
-    @agent.read_timeout = 5
+    @agent.open_timeout = 10 # 5でエラー出てたので
+    @agent.read_timeout = 30 #5でエラー出たので
 
     #### Cookie準備
     puts "[setup_mechanize] https login secure.nicolive.jp\n"
@@ -104,24 +102,6 @@ class RmqCollector
 
     puts "[setup_mechanize] end\n"
 
-    # #### ログインしてticket取得
-    # puts "[login] nicolive_antenna"
-    # begin
-    #   agent.post('https://secure.nicovideo.jp/secure/login?site=nicolive_antenna', {:mail => login_mail, :password => login_password})
-    # rescue Mechanize::ResponseCodeError => rce
-    #   abort "ログインエラー: #{rce.response_code}\n"
-    # rescue => ex
-    #   puts "ログインエラー:\n"
-    #   puts ex.to_s
-    #   abort
-    # end
-
-    # agent.cookie_jar.save_as('mech_cookie.yaml')
-
-    # if agent.page.at("//nicovideo_user_response/attribute::status").text !~ /ok/ then
-    #   abort "ログインエラー(002)\n"
-    # end
-    # ticketstr = agent.page.at("//ticket").text
   end
 
 
@@ -130,24 +110,23 @@ class RmqCollector
 
     #### getplayerstatusでコメントサーバのIP,port,threadidを取ってくる
     begin
-      @agent.get("http://live.nicovideo.jp/api/getplayerstatus?v=lv#{liveid}")
+      @agent.get("http://live.nicovideo.jp/api/getplayerstatus?v=#{liveid}") # liveidの先頭に lv を含んでいる
     rescue Mechanize::ResponseCodeError => rce
       puts "responsecodeerror\n"
-      @alog.error("getplayerstatus error(005)(lv#{liveid})(http #{rce.response_code})")
+      @alog.error("getplayerstatus error(005)(#{liveid})(http #{rce.response_code})")
       abort
       #next
     rescue => ex
-      puts "other error\n"
-      puts ex.to_s
-      temp = ex.backtrace.join("\n")
+      puts "[doCollect_child] other error\n"
+      puts ex.message
+      puts "Backtrace: \n\t"
+      temp = ex.backtrace.join("\n\t")
       puts "#{temp}\n"
-      @alog.error("getplayerstatus error(007)(lv#{liveid}): #{ex}")
+      @alog.error("getplayerstatus error(007)(#{liveid}): #{ex}")
       @dlog.debug(ex.backtrace.join("\n"))
       abort
       #next
     end
-
-    puts "hoge\n"
 
     begin
       if @agent.page.at("//getplayerstatus/attribute::status").text !~ /ok/ then
@@ -159,13 +138,13 @@ class RmqCollector
         gps_error_code = @agent.page.at("//getplayerstatus/error/code").text
         case gps_error_code
         when "require_community_member", "closed", "deletedbyuser"
-          puts "require community member\n"
+          puts "require community member, closed, deletedbyuser: #{gps_error_code}\n"
           # このへんはまあ気にせずともよかろう
-          @alog.warn "getplayerstatus error(006)(lv#{liveid}): #{gps_error_code}"
+          @alog.warn "getplayerstatus error(006)(#{liveid}): #{gps_error_code}"
         else
           # unknownとかは気にしたい
-          puts "unknown error"
-          @alog.error "getplayerstatus error(008)(lv#{liveid}): #{gps_error_code}"
+          puts "unknown error: #{gps_error_code}"
+          @alog.error "getplayerstatus error(008)(#{liveid}): #{gps_error_code}"
         end
 
         next # アラートサーバからの次回の受信、つまり sock.each("\0") do |line| の次回に進む
@@ -177,16 +156,12 @@ class RmqCollector
       next
     end
 
-    puts "hogehoge\n"
+    puts "[doCollect_child] #{liveid}: will connect to commentserver...\n"
 
     #### コメントサーバへ接続
     commentserver = @agent.page.at("/getplayerstatus/ms/addr").text
     commentport = @agent.page.at("/getplayerstatus/ms/port").text
     commentthread = @agent.page.at("/getplayerstatus/ms/thread").text
-
-    # 放送枠ごとにThread生成
-    #comment_threads[liveid] = Thread.new(liveid, commentserver, commentport, commentthread) do |lid, cserv, cport, cth|
-    #dlog.debug("#{comment_threads.size}: #{comment_threads.keys.sort}")
 
     begin
       # TODO: このソケットを集約したい
@@ -201,9 +176,8 @@ class RmqCollector
       return #break # その受信待ちスレッドはあきらめて異常終了扱い、Thread.newを抜ける。breakじゃおかしい？
     end
 
-    puts "before alog.info\n"
-
-    @alog.info("connect to: #{commentserver}:#{commentport} thread=#{commentthread}")
+    puts "[doCollect_child] #{liveid}: connected to commentserver\n"
+    @alog.info("connected to: #{commentserver}:#{commentport} thread=#{commentthread}")
 
     begin
       #### 最初にこの合図を送信してやる scoresはNG共有のスコアを受け取るため
@@ -246,23 +220,12 @@ class RmqCollector
           #message["score"] = xpathvalue(xdoc, "//chat/attribute::score")
           puts "[" + message["thread"] + "] [" + message["no"] + "] [" + message["user_id"] + "] "+ message["text"] + "\n"
           
-          # zmq send
-          if zmq_enabled then
-            begin
-              zmq_semaphore.synchronize do # TODO: synchronizeしてたら意味ない？？？
-                zmq_sock.send("allmsg #{message.to_json}") # TODO: jsonとするか、line2をそのまま入れるか、他の形式にするか
-              end
-            rescue => exception
-              puts "**** ZMQ send error: #{exception}\n"
-              @alog.error "ZMQ send error: #{exception}"
-            end
-          end
         end
 
         if line2 =~ /\/disconnect/ then
           puts "**** DISCONNECT: #{lid} ****\n"
           @alog.info("disconnect: #{lid}")
-          # TODO: zmq_sockのclose？
+
           sock2.close if sock2
           sock2 = nil # ？？
           #comment_threads.delete(lid)
@@ -271,8 +234,10 @@ class RmqCollector
       end # of sock2.each
     rescue => exception
       puts "**** comment server socket read(each) error : #{commentserver} #{commentport} #{exception}\n"
+      puts "Backtrace: \n\t"
+      puts exception.backtrace.join("\n\t")
       @alog.error "comment server socket read(each) error : #{commentserver} #{commentport} #{exception}"
-      # TODO: zmq_sockのclose？
+
       sock2.close if sock2
       #comment_threads.delete(lid)
     end
@@ -287,13 +252,23 @@ class RmqCollector
 
     bunnyconn = Bunny.new(:host => @bunny_ip)
     bunnyconn.start
+    puts "[doCollect] bunny connection started\n"
     bunnychannel = bunnyconn.create_channel
     bunnyqueue = bunnychannel.queue("#{@bunny_routing_key}", :durable => true)
+    puts "[doCollect] bunny queue #{@bunny_routing_key} created\n"
+    puts "#{bunnyqueue.message_count}\n"
 
-    bunnyqueue.subscribe() do |delivery_info, properties, body|
-      puts "#{body}\n"
-      doCollect_child body
+    begin
+      bunnyqueue.subscribe() do |delivery_info, properties, body|
+        puts "[doCollect] subscribe loop\n"
+        puts "#{body}\n"
+        doCollect_child body
+      end
+    rescue => exception
+      puts "[doCollect] subscribe error: #{exception}\n"
     end
+
+    puts "#{bunnyqueue.message_count}\n"
 
     puts "[doCollect] RabbitMQ queue #{@bunny_routing_key} subscribe end.\n"
 
@@ -306,6 +281,12 @@ end
 if (defined? JRUBY_VERSION) and (RbConfig::CONFIG['host_os'] =~ /win/) then
   $stdout.set_encoding("Windows-31J", "UTF-8", :undef=>:replace, :invalid=>:replace, :replace=>"■")
 end
+
+# rubyのシグナルハンドラでは、特にsignal-safeのような定義はない
+# http://comments.gmane.org/gmane.comp.lang.ruby.japanese/8076
+Signal.trap(:INT) {
+  puts Thread.list.join("\n")
+}
 
 rcol = RmqCollector.new
 rcol.doCollect
