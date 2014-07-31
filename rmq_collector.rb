@@ -261,10 +261,12 @@ class RmqCollector
     begin
       # bunnyのデフォルトでは、subscribeを呼ぶ側と、subscribeの内側は別のスレッドで動くらしい。
       # :block => trueを渡すとsubscribe内部をブロックする動作となる。
+      # 
       # http://rubybunny.info/articles/queues.html#blocking_or_nonblocking_behavior
       bunnyqueue.subscribe() do |delivery_info, properties, body|
         puts "[doCollect] subscribe loop\n"
         puts "#{body}\n"
+        # TODO: ここでスレッドを起こすような方法があればいいような気がするが
         doCollect_child body
       end
     rescue => exception
