@@ -91,8 +91,10 @@ bundler対応、jemalloc対応を行ったので、以下の通り。
 
 - ZeroMQは3系。おそらく3.2.2以上が必要になります。手元では4.0.3でも動作確認しています。
 
+License
+-------
+Copyright (c) 2011-2014 Satoshi OKANO. Distributed under the MIT License. See LICENSE.txt for further details.
 
 2011/11/30
 
 satokano@gmail.com
-
