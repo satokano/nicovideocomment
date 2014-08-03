@@ -15,7 +15,8 @@ require 'json'
 require 'socket'
 require 'thread'
 require 'yaml'
-require 'bunny'
+require 'march_hare'
+require 'Celluloid'
 
 class RmqCollector
 
@@ -39,8 +40,8 @@ class RmqCollector
     @debug_log = "./log/debug.log"
     @gc_log = "./log/gc.log"
     @gc_log_interval = 1 # second
-    @bunny_ip = @config["bunny_ip"]
-    @bunny_routing_key = @config["bunny_routing_key"]
+    @rmq_ip = @config["rmq_ip"]
+    @rmq_routing_key = @config["rmq_routing_key"]
     @children = @config["children"] || 50
     puts "[load_config] done"
   end
@@ -250,35 +251,59 @@ class RmqCollector
 
     puts "[doCollect] setup_mechanize done.\n"
 
-    bunnyconn = Bunny.new(:host => @bunny_ip)
-    bunnyconn.start
-    puts "[doCollect] bunny connection started\n"
-    bunnychannel = bunnyconn.create_channel
-    bunnyqueue = bunnychannel.queue("#{@bunny_routing_key}", :durable => true)
-    puts "[doCollect] bunny queue #{@bunny_routing_key} created\n"
-    puts "#{bunnyqueue.message_count}\n"
+    rmqconn = MarchHare.connect(:host => @rmq_ip)
+    rmqconn.start
+    puts "[doCollect] rmq connection started\n"
+    rmqchannel = rmqconn.create_channel
+    rmqqueue = rmqchannel.queue("#{@rmq_routing_key}", :durable => true)
+    puts "[doCollect] rmq queue #{@rmq_routing_key} created\n"
+    puts "#{rmqqueue.message_count}\n"
 
     begin
-      # bunnyのデフォルトでは、subscribeを呼ぶ側と、subscribeの内側は別のスレッドで動くらしい。
+      # bunny/march_hareのデフォルトでは、subscribeを呼ぶ側と、subscribeの内側は別のスレッドで動くらしい。
       # :block => trueを渡すとsubscribe内部をブロックする動作となる。
       # 
       # http://rubybunny.info/articles/queues.html#blocking_or_nonblocking_behavior
-      bunnyqueue.subscribe() do |delivery_info, properties, body|
-        puts "[doCollect] subscribe loop\n"
-        puts "#{body}\n"
-        # TODO: ここでスレッドを起こすような方法があればいいような気がするが
-        doCollect_child body
+      # 
+      # "Consumers last as long as the channel that they were declared on, or until the client cancels them (unsubscribes)."
+      # と書いてある割に、キューが空になるとsubscribeが抜けてしまっているっぽい。さすがに信じがたいのでchannelの設定によるのかと思ったがそれらしい項目見つからず。
+      # http://rubymarchhare.info/articles/queues.html
+      # なので抜けないように、popをwhileで囲む形にしてみる
+      #rmqqueue.subscribe() do |delivery_info, properties, body|
+      while true
+        header, body = rmqqueue.pop
+        puts "[doCollect] pop loop ..... #{body}\n"
+        # なんかキューが空のときpopからnilが返ってくる気がする
+        if body then
+          supervisor = RmqCollector_Cell.supervise_as(body.to_sym(), body)
+          Celluloid::Actor[body.to_sym()].run
+          #doCollect_child body
+        end
       end
     rescue => exception
       puts "[doCollect] subscribe error: #{exception}\n"
     end
 
-    puts "#{bunnyqueue.message_count}\n"
+    # TODO: ここで子スレッドの終了を待たないといけない。そうでないと下のrmqqueue.message_countは子スレッドの処理が終わる前の数を表示してしまう。
+    sleep 10
+    puts "#{rmqqueue.message_count}\n"
 
-    puts "[doCollect] RabbitMQ queue #{@bunny_routing_key} subscribe end.\n"
+    puts "[doCollect] RabbitMQ queue #{@rmq_routing_key} subscribe end.\n"
 
   end
+end
 
+class RmqCollector_Cell
+  include Celluloid
+  include Celluloid::Logger
+
+  def initialize(liveid)
+    @liveid = liveid
+  end
+
+  def run
+    debug @liveid
+  end
 end
 
 # Windows JRuby用。-E Windows-31J:UTF-8 が効いてないという問題があるので、回避。
