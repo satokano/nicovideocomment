@@ -15,6 +15,7 @@ gem "mongo"
 gem "nokogiri"
 gem "ffi-rzmq"
 gem "bunny"
+gem "march_hare"
 gem "celluloid"
 
 group :test do
@@ -22,4 +23,3 @@ group :test do
   gem "rspec"
   gem "codeclimate-test-reporter", require: nil
 end
-
