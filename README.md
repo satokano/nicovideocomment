@@ -13,13 +13,6 @@
     git clone git@github.com:satokano/nicovideocomment.git
     bundle install --path vendor/bundle
 
-ただしZeroMQを野良インストールした場合など必要に応じて事前に
-
-    bundle config build.zmq --with-zmq-dir=/usr/local
-
-のようにインストールディレクトリを指定しておく。
-
-
 設定
 --------
 
@@ -30,9 +23,10 @@
 起動
 --------
 
-bundler対応、jemalloc対応を行ったので、以下の通り。
+jruby, bundlerを使う場合で、以下の通り。（bundle環境下って「jruby」を2回書くしかないの？）RabbitMQは事前に起動しておく。
 
-    bundle exec je ruby ./collector.rb
+    jruby -S bundle exec jruby ./scraper.rb
+    jruby -S bundle exec jruby ./rmq_collector.rb
 
 
 できること
@@ -42,16 +36,6 @@ bundler対応、jemalloc対応を行ったので、以下の通り。
 - 枠の開始情報を受信すると、コメントサーバに接続し、枠終了までコメントを受信し続けます。
 - コメント取得は複数の放送に対して同時並行で行います。
 - でも多くしすぎると接続制限を食らうみたいなので、同時に取得する枠の数を設定できるようにしてあります。
-
-既知の問題
-----------
-
-- メモリを食いすぎて遅くなる
- - メモリ1GBのさくらVPS。スレッド数3000～程度で、スワップが多発してしまうらしい。
- - GCは特に頻発してるわけではなかった。
- - メモリ1GBでは、最大スレッド数（children）は2000～2500が上限と考えられる。
-- クラス使って無くてベタ書き。Code Climateの評価0。
-
 
 未実装だけど今後やってみたいこと
 --------------------------------
@@ -78,19 +62,9 @@ bundler対応、jemalloc対応を行ったので、以下の通り。
 動作確認環境
 ------------
 
-手元では主にLinux、ときどきFreeBSDで動作確認しています。Rubyは最近はもっぱらJRuby1.7を使っています。Travis CIではrvm 2.1.1, 2.1.0, 2.0.0, 1.9.3, 1.9.2, JRuby 1.9modeを指定して確認しています。
+手元では主にLinux、ときどきFreeBSDで動作確認しています。Rubyは最近はもっぱらJRuby1.7を使っています。Travis CIでは（bundle checkしかテストしてませんが）rvm 2.1.1, 2.1.0, 2.0.0, 1.9.3, 1.9.2, JRuby 1.9modeを指定して確認しています。
 
-    [okano@localhost nvc]$ uname -a
-    Linux localhost.localdomain 2.6.18-274.12.1.el5 #1 SMP Tue Nov 29 13:37:46 EST 2011 x86_64 x86_64 x86_64 GNU/Linux
-
-    [okano@localhost nvc]$ cat /etc/redhat-release
-    CentOS release 5.8 (Final)
-
-    [okano@localhost nvc]$ ruby --version
-    ruby 1.9.3p0 (2011-10-30 revision 33570) [x86_64-linux]
-
-
-- ZeroMQは3系。おそらく3.2.2以上が必要になります。手元では4.0.3でも動作確認しています。
+- あとでRabbitMQとbunnyのバージョンを書く
 
 License
 -------
