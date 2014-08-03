@@ -15,6 +15,7 @@ gem "mongo"
 gem "nokogiri"
 gem "ffi-rzmq"
 gem "bunny"
+gem "celluloid"
 
 group :test do
   gem "rake"
