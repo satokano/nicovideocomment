@@ -17,6 +17,7 @@ require 'thread'
 require 'yaml'
 require 'march_hare'
 require 'Celluloid'
+require 'readline'
 
 class RmqCollector
 
@@ -251,14 +252,20 @@ class RmqCollector
 
     puts "[doCollect] setup_mechanize done.\n"
 
-    rmqconn = MarchHare.connect(:host => @rmq_ip)
-    rmqconn.start
+    @rmqconn = MarchHare.connect(:host => @rmq_ip)
+    @rmqconn.start
     puts "[doCollect] rmq connection started\n"
-    rmqchannel = rmqconn.create_channel
-    puts "rmqchannel.prefetch: #{rmqchannel.prefetch}"
-    rmqchannel.prefetch = 1
-    puts "rmqchannel.prefetch: #{rmqchannel.prefetch}"
-    rmqqueue = rmqchannel.queue("#{@rmq_routing_key}", :durable => true)
+
+    # prefetchのデフォルトが0になっていて
+    # 0のままだと、空のキューを読んだときにnilを取得して、subscribeループを抜けるという動作になっているっぽい
+    # 普通にsubscribeループでブロックさせるために1にしておく
+    # http://rubymarchhare.info/articles/queues.html
+    @rmqchannel = @rmqconn.create_channel
+    puts "rmqchannel.prefetch: #{@rmqchannel.prefetch}"
+    @rmqchannel.prefetch = 1
+    puts "rmqchannel.prefetch: #{@rmqchannel.prefetch}"
+
+    rmqqueue = @rmqchannel.queue("#{@rmq_routing_key}", :durable => true)
     puts "[doCollect] rmq queue #{@rmq_routing_key} created\n"
     puts "#{rmqqueue.message_count}\n"
 
@@ -267,17 +274,10 @@ class RmqCollector
       # :block => trueを渡すとsubscribe内部をブロックする動作となる。
       # 
       # http://rubybunny.info/articles/queues.html#blocking_or_nonblocking_behavior
-      # 
-      # "Consumers last as long as the channel that they were declared on, or until the client cancels them (unsubscribes)."
-      # と書いてある割に、キューが空になるとsubscribeが抜けてしまっているっぽい。さすがに信じがたいのでchannelの設定によるのかと思ったがそれらしい項目見つからず。
-      # http://rubymarchhare.info/articles/queues.html
-      # なので抜けないように、popをwhileで囲む形にしてみる
       rmqqueue.subscribe() do |delivery_info, properties, body|
-      #while true
-        #header, body = rmqqueue.pop
-        puts "[doCollect] subscribe loop ..... #{body}\n"
         # なんかキューが空のときpopからnilが返ってくる気がする
         if body then
+          puts "[doCollect] subscribe loop ..... #{body}\n"
           supervisor = RmqCollector_Cell.supervise_as(body.to_sym(), body)
           Celluloid::Actor[body.to_sym()].run
           #doCollect_child body
@@ -293,6 +293,11 @@ class RmqCollector
 
     puts "[doCollect] RabbitMQ queue #{@rmq_routing_key} subscribe end.\n"
 
+  end
+
+  def closeChannel()
+    @rmqchannel.close
+    @rmqconn.close
   end
 end
 
@@ -319,6 +324,14 @@ end
 # http://comments.gmane.org/gmane.comp.lang.ruby.japanese/8076
 Signal.trap(:INT) {
   puts Thread.list.join("\n")
+
+  response = Readline.readline("[rmq_collector] > shutdown?: [y/n] ")
+  if response =~ /y/i then
+    puts "[rmq_collector] > closing channel... exiting.\n"
+    rcol.closeChannel
+    exit
+  end
+  puts "[rmq_collector] > continue...\n"
 }
 
 rcol = RmqCollector.new
