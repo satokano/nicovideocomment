@@ -255,6 +255,9 @@ class RmqCollector
     rmqconn.start
     puts "[doCollect] rmq connection started\n"
     rmqchannel = rmqconn.create_channel
+    puts "rmqchannel.prefetch: #{rmqchannel.prefetch}"
+    rmqchannel.prefetch = 1
+    puts "rmqchannel.prefetch: #{rmqchannel.prefetch}"
     rmqqueue = rmqchannel.queue("#{@rmq_routing_key}", :durable => true)
     puts "[doCollect] rmq queue #{@rmq_routing_key} created\n"
     puts "#{rmqqueue.message_count}\n"
@@ -269,10 +272,10 @@ class RmqCollector
       # と書いてある割に、キューが空になるとsubscribeが抜けてしまっているっぽい。さすがに信じがたいのでchannelの設定によるのかと思ったがそれらしい項目見つからず。
       # http://rubymarchhare.info/articles/queues.html
       # なので抜けないように、popをwhileで囲む形にしてみる
-      #rmqqueue.subscribe() do |delivery_info, properties, body|
-      while true
-        header, body = rmqqueue.pop
-        puts "[doCollect] pop loop ..... #{body}\n"
+      rmqqueue.subscribe() do |delivery_info, properties, body|
+      #while true
+        #header, body = rmqqueue.pop
+        puts "[doCollect] subscribe loop ..... #{body}\n"
         # なんかキューが空のときpopからnilが返ってくる気がする
         if body then
           supervisor = RmqCollector_Cell.supervise_as(body.to_sym(), body)
