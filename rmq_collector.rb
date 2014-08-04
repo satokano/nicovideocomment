@@ -274,13 +274,15 @@ class RmqCollector
       # :block => trueを渡すとsubscribe内部をブロックする動作となる。
       # 
       # http://rubybunny.info/articles/queues.html#blocking_or_nonblocking_behavior
-      rmqqueue.subscribe() do |delivery_info, properties, body|
+      rmqqueue.subscribe(:block => true) do |delivery_info, properties, body|
         # なんかキューが空のときpopからnilが返ってくる気がする
         if body then
           puts "[doCollect] subscribe loop ..... #{body}\n"
           supervisor = RmqCollector_Cell.supervise_as(body.to_sym(), body)
           Celluloid::Actor[body.to_sym()].run
           #doCollect_child body
+        else
+          puts "[doCollect] subscribe loop ..... nil? #{body}\n"
         end
       end
     rescue => exception
