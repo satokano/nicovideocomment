@@ -272,15 +272,22 @@ class RmqCollector
     begin
       # bunny/march_hareのデフォルトでは、subscribeを呼ぶ側と、subscribeの内側は別のスレッドで動くらしい。
       # :block => trueを渡すとsubscribe内部をブロックする動作となる。
+      # subscribeからの戻りは delivery_info, properties, bodyの3つなのか、metadata, bodyの2つなのか？
       # 
       # http://rubybunny.info/articles/queues.html#blocking_or_nonblocking_behavior
-      rmqqueue.subscribe(:block => true) do |delivery_info, properties, body|
+      @count = 0
+      rmqqueue.subscribe() do |metadata, body|
+      #metadata, body = rmqqueue.pop()
         # なんかキューが空のときpopからnilが返ってくる気がする
         puts "queue count: #{rmqqueue.message_count}\n"
+        @count = @count + 1
+        puts "subscribe #{@count}\n"
+        #puts Thread.list.join("\n")
+        #sleep 3
         if !(body.nil?) then
-          puts "[doCollect] subscribe loop ..... #{body}\n"
-          supervisor = RmqCollector_Cell.supervise_as(body.to_sym(), body)
-          Celluloid::Actor[body.to_sym()].run
+          puts "[doCollect] body: #{body}\n"
+          #supervisor = RmqCollector_Cell.supervise_as(body.to_sym(), body)
+          #Celluloid::Actor[body.to_sym()].run
           #doCollect_child body
         else
           #puts "[doCollect] subscribe loop ..... nil? #{body}\n"
