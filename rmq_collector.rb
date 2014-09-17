@@ -16,7 +16,7 @@ require 'socket'
 require 'thread'
 require 'yaml'
 require 'march_hare'
-require 'Celluloid'
+require 'celluloid'
 require 'readline'
 
 class RmqCollector
