@@ -256,9 +256,9 @@ class RmqCollector
     @rmqconn.start
     puts "[doCollect] rmq connection started\n"
 
-    # prefetchのデフォルトが0になっていて
-    # 0のままだと、空のキューを読んだときにnilを取得して、subscribeループを抜けるという動作になっているっぽい
-    # 普通にsubscribeループでブロックさせるために1にしておく
+    # prefetchのデフォルトは0。ackまたはrejectする前に、prefetch個のメッセージをconsumerに渡すらしい。
+    # 1にしておく。
+    # 空のキューを読んだときに、nilを取得して、subscribeループを抜けるという動作になっているようだが、どうやらprefetch設定とは関係なさそう。
     # http://rubymarchhare.info/articles/queues.html
     @rmqchannel = @rmqconn.create_channel
     puts "rmqchannel.prefetch: #{@rmqchannel.prefetch}"
