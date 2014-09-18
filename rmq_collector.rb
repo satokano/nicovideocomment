@@ -337,8 +337,9 @@ Signal.trap(:INT) {
 
   response = Readline.readline("[rmq_collector] > shutdown?: [y/n] ")
   if response =~ /y/i then
+    # このコメントまでは表示されるが、その後closeChannelを呼んでも呼ばなくても、何かに引っかかって終了してくれない
     puts "[rmq_collector] > closing channel... exiting.\n"
-    rcol.closeChannel
+    #rcol.closeChannel
     exit
   end
   puts "[rmq_collector] > continue...\n"
