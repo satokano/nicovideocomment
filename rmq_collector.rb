@@ -280,8 +280,6 @@ class RmqCollector
       # http://rubybunny.info/articles/queues.html#blocking_or_nonblocking_behavior
       @count = 0
       rmqqueue.subscribe() do |metadata, body|
-      #metadata, body = rmqqueue.pop()
-        # なんかキューが空のときpopからnilが返ってくる気がする
         puts "queue count: #{rmqqueue.message_count}\n"
         @count = @count + 1
         puts "subscribe #{@count}\n"
@@ -293,7 +291,7 @@ class RmqCollector
           #Celluloid::Actor[body.to_sym()].run
           #doCollect_child body
         else
-          #puts "[doCollect] subscribe loop ..... nil? #{body}\n"
+          puts "[doCollect] subscribe loop ..... nil? #{body}\n"
         end
       end
     rescue => exception
