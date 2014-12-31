@@ -14,10 +14,10 @@ class RssScraper
     load_config()
 
     #### Mechanizeを作成して、通信を開始する。
-    # Chrome 33.0.1750.154m Windows7 64bitのUser Agentは以下
-    # Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/33.0.1750.154 Safari/537.36
+    # Chrome 39.0.2171.95 m Windows7 64bitのUser Agentは以下
+    # Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/39.0.2171.95 Safari/537.36
     @agent = Mechanize.new
-    @agent.user_agent = "Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/33.0.1750.154 Safari/537.36"
+    @agent.user_agent = "Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/39.0.2171.95 Safari/537.36"
     @agent.keep_alive = false # 間欠的にAPIリクエストするだけなので無効の方がよいのではないか
     # agent.idle_timeout = 5 # defaultのまま
     @agent.open_timeout = 5
