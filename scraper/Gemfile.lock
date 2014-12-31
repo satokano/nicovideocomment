@@ -1,13 +1,11 @@
 GEM
   remote: https://rubygems.org/
   specs:
-    amq-protocol (1.9.2)
-    bunny (1.1.8)
-      amq-protocol (>= 1.9.2)
     domain_name (0.5.18)
       unf (>= 0.0.5, < 1.0.0)
     http-cookie (1.0.2)
       domain_name (~> 0.5)
+    march_hare (2.7.0-java)
     mechanize (2.7.3)
       domain_name (~> 0.5, >= 0.5.1)
       http-cookie (~> 1.0)
@@ -36,5 +34,5 @@ PLATFORMS
   java
 
 DEPENDENCIES
-  bunny
+  march_hare
   mechanize

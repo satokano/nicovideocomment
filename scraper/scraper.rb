@@ -2,12 +2,12 @@
 # 
 # = ニコニコ生放送 ユーザ生（recent）のRSSを読み込んで内容を表示、RabbitMQにpublishする
 # Author:: Satoshi OKANO
-# Copyright:: Copyright 2011-2014 Satoshi OKANO
+# Copyright:: Copyright 2011-2015 Satoshi OKANO
 # License:: MIT
 
 require 'rubygems'
 require 'mechanize'
-require 'bunny'
+require 'march_hare'
 
 class RssScraper
   def initialize()
@@ -23,12 +23,12 @@ class RssScraper
     @agent.open_timeout = 5
     @agent.read_timeout = 5
 
-    if @bunny_enabled then
-      @bunnyconn = Bunny.new(:host => @bunny_ip)
-      @bunnyconn.start
-      @bunnychannel = @bunnyconn.create_channel
-      @bunnyexchange = @bunnychannel.default_exchange
-    end
+    @rmqconn = MarchHare.connect(:host => @rmq_ip, :port => @rmq_port)
+    # MarchHareではstartは意味ないらしい
+    # http://reference.rubymarchhare.info/MarchHare/Session.html#start-instance_method
+    #@rmqconn.start
+    @rmqchannel = @rmqconn.create_channel
+    @rmqexchange = @rmqchannel.default_exchange
   end
 
   def load_config()
@@ -36,9 +36,9 @@ class RssScraper
     config = YAML.load_file("config.yaml")
     @login_mail = config["login_mail"]
     @login_password = config["login_password"]
-    @bunny_enabled = config["bunny_enabled"]
-    @bunny_ip = config["bunny_ip"]
-    @bunny_routing_key = config["bunny_routing_key"]
+    @rmq_ip = config["rmq_ip"]
+    @rmq_port = config["rmq_port"]
+    @rmq_routing_key = config["rmq_routing_key"]
   end
 
   def xpathtext(xmlnode, path)
@@ -103,8 +103,8 @@ class RssScraper
         guid = xpathtext(item, ".//guid")
         puts "#{guid} #{owner_name} #{community_name} #{title} #{member_only}\n"
         @total_count_actual += 1
-        if @bunny_enabled and !member_only then
-          @bunnyexchange.publish("#{guid}", :routing_key => @bunny_routing_key)
+        if !member_only then
+          @rmqexchange.publish("#{guid}", :routing_key => @rmq_routing_key)
         end
       }
     }
@@ -112,9 +112,7 @@ class RssScraper
     puts "合計件数(RSS情報): #{@total_count}\n"
     puts "合計件数(実績): #{@total_count_actual} / コミュ限: #{@member_only_count} / 公開: #{@total_count_actual - @member_only_count}\n"
 
-    if @bunny_enabled then
-      @bunnyconn.close
-    end
+    @rmqconn.close
   end
 
 end
