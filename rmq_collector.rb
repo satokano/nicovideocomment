@@ -45,6 +45,7 @@ class RmqCollector
     @gc_log = "./log/gc.log"
     @gc_log_interval = 1 # second
     @rmq_ip = @config["rmq_ip"]
+    @rmq_port = config["rmq_port"]
     @rmq_routing_key = @config["rmq_routing_key"]
     @children = @config["children"] || 50
     puts "[load_config] done"
@@ -255,8 +256,10 @@ class RmqCollector
 
     puts "[doCollect] setup_mechanize done.\n"
 
-    @rmqconn = MarchHare.connect(:host => @rmq_ip)
-    @rmqconn.start
+    @rmqconn = MarchHare.connect(:host => @rmq_ip, :port => @rmq_port)
+    # MarchHareではstartは意味ないらしい
+    # http://reference.rubymarchhare.info/MarchHare/Session.html#start-instance_method
+    #@rmqconn.start
     puts "[doCollect] rmq connection started\n"
 
     # prefetchのデフォルトは0。ackまたはrejectする前に、prefetch個のメッセージをconsumerに渡すらしい。
