@@ -285,15 +285,12 @@ class RmqCollector
       # :block => trueを渡すとsubscribe内部をブロックする動作となる。
       # subscribeからの戻りは delivery_info, properties, bodyの3つなのか、metadata, bodyの2つなのか？
       # どうも2つで十分で、metadataから全部取れるっぽい。
-      # 
       # http://rubybunny.info/articles/queues.html#blocking_or_nonblocking_behavior
       @count = 0
       @rmqconsumer = rmqqueue.subscribe() do |metadata, body|
         puts "queue count: #{rmqqueue.message_count}\n"
         @count = @count + 1
         puts "subscribe #{@count}\n"
-        #puts Thread.list.join("\n")
-        #sleep 3
         if !(body.nil?) then
           puts "[doCollect] body: #{body}\n"
           #supervisor = RmqCollector_Cell.supervise_as(body.to_sym(), body)
@@ -306,13 +303,10 @@ class RmqCollector
     rescue => exception
       puts "[doCollect] subscribe error: #{exception}\n"
     end
+    # subscribeで:block => trueを渡さなかったとき、メインスレッドは即endを超えてこの下へ進む。
 
-    # TODO: ここで子スレッドの終了を待たないといけない。そうでないと下のrmqqueue.message_countは子スレッドの処理が終わる前の数を表示してしまう。
-    sleep 10
     puts "#{rmqqueue.message_count}\n"
-
-    puts "[doCollect] RabbitMQ queue #{@rmq_routing_key} subscribe end.\n"
-
+    puts "[doCollect] RabbitMQ queue #{@rmq_routing_key} subscribe(main thread) end.\n"
   end
 
   def closeChannel()
