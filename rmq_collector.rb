@@ -259,7 +259,7 @@ class RmqCollector
     begin
       @rmqconn = MarchHare.connect(:host => @rmq_ip, :port => @rmq_port)
     rescue MarchHare::ConnectionRefused => cre
-      puts "RabbitMQへのコネクション確立エラー: #{rce.to_s}\n"
+      puts "RabbitMQへのコネクション確立エラー: #{cre.to_s}\n"
       puts rce.backtrace
       abort
     end
