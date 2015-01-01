@@ -311,7 +311,7 @@ class RmqCollector
 
   def closeChannel()
     cancel_ok = @rmqconsumer.cancel
-    puts "consumer calcel: #{cancel_ok}\n"
+    puts "consumer cancel: #{cancel_ok}\n"
     @rmqchannel.close
     @rmqconn.close
   end
@@ -353,4 +353,4 @@ Signal.trap(:INT) {
 
 rcol = RmqCollector.new
 rcol.doCollect
-rcol.closeChannel
+#rcol.closeChannel
