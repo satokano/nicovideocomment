@@ -23,7 +23,13 @@ class RssScraper
     @agent.open_timeout = 5
     @agent.read_timeout = 5
 
-    @rmqconn = MarchHare.connect(:host => @rmq_ip, :port => @rmq_port)
+    begin
+      @rmqconn = MarchHare.connect(:host => @rmq_ip, :port => @rmq_port)
+    rescue MarchHare::ConnectionRefused => cre
+      puts "RabbitMQへのコネクション確立エラー: #{rce.to_s}\n"
+      puts rce.backtrace
+      abort
+    end
     # MarchHareではstartは意味ないらしい
     # http://reference.rubymarchhare.info/MarchHare/Session.html#start-instance_method
     #@rmqconn.start
