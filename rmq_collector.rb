@@ -260,7 +260,7 @@ class RmqCollector
       @rmqconn = MarchHare.connect(:host => @rmq_ip, :port => @rmq_port)
     rescue MarchHare::ConnectionRefused => cre
       puts "RabbitMQへのコネクション確立エラー: #{cre.to_s}\n"
-      puts rce.backtrace
+      puts cre.backtrace
       abort
     end
     # MarchHareではstartは意味ないらしい
