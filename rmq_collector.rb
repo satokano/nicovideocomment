@@ -45,7 +45,7 @@ class RmqCollector
     @gc_log = "./log/gc.log"
     @gc_log_interval = 1 # second
     @rmq_ip = @config["rmq_ip"]
-    @rmq_port = config["rmq_port"]
+    @rmq_port = @config["rmq_port"]
     @rmq_routing_key = @config["rmq_routing_key"]
     @children = @config["children"] || 50
     puts "[load_config] done"
