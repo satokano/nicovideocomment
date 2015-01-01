@@ -287,7 +287,7 @@ class RmqCollector
       # どうも2つで十分で、metadataから全部取れるっぽい。
       # http://rubybunny.info/articles/queues.html#blocking_or_nonblocking_behavior
       @count = 0
-      @rmqconsumer = rmqqueue.subscribe() do |metadata, body|
+      @rmqconsumer = rmqqueue.subscribe(:block => true) do |metadata, body|
         puts "queue count: #{rmqqueue.message_count}\n"
         @count = @count + 1
         puts "subscribe #{@count}\n"
@@ -353,4 +353,4 @@ Signal.trap(:INT) {
 
 rcol = RmqCollector.new
 rcol.doCollect
-#rcol.closeChannel
+rcol.closeChannel
