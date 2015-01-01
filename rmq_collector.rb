@@ -263,8 +263,7 @@ class RmqCollector
     puts "[doCollect] rmq connection started\n"
 
     # prefetchのデフォルトは0。ackまたはrejectする前に、prefetch個のメッセージをconsumerに渡すらしい。
-    # 1にしておく。
-    # 空のキューを読んだときに、nilを取得して、subscribeループを抜けるという動作になっているようだが、どうやらprefetch設定とは関係なさそう。
+    # explicit acknowledgementsを使っていないときは、prefetchの設定は無視されると書いてある。1にしておく。
     # http://rubymarchhare.info/articles/queues.html
     @rmqchannel = @rmqconn.create_channel
     puts "rmqchannel.prefetch: #{@rmqchannel.prefetch}"
