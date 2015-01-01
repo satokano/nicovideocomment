@@ -346,7 +346,7 @@ Signal.trap(:INT) {
     # このコメントまでは表示されるが、その後closeChannelを呼んでも呼ばなくても、何かに引っかかって終了してくれない
     puts "[rmq_collector] > closing channel... exiting.\n"
     rcol.closeChannel
-    exit
+    # exit
   end
   puts "[rmq_collector] > continue...\n"
 }
