@@ -279,10 +279,11 @@ class RmqCollector
       # bunny/march_hareのデフォルトでは、subscribeを呼ぶ側と、subscribeの内側は別のスレッドで動くらしい。
       # :block => trueを渡すとsubscribe内部をブロックする動作となる。
       # subscribeからの戻りは delivery_info, properties, bodyの3つなのか、metadata, bodyの2つなのか？
+      # どうも2つで十分で、metadataから全部取れるっぽい。
       # 
       # http://rubybunny.info/articles/queues.html#blocking_or_nonblocking_behavior
       @count = 0
-      rmqqueue.subscribe() do |metadata, body|
+      @rmqconsumer = rmqqueue.subscribe() do |metadata, body|
         puts "queue count: #{rmqqueue.message_count}\n"
         @count = @count + 1
         puts "subscribe #{@count}\n"
@@ -310,6 +311,8 @@ class RmqCollector
   end
 
   def closeChannel()
+    cancel_ok = @rmqconsumer.cancel
+    puts "consumer calcel: #{cancel_ok}\n"
     @rmqchannel.close
     @rmqconn.close
   end
@@ -343,7 +346,7 @@ Signal.trap(:INT) {
   if response =~ /y/i then
     # このコメントまでは表示されるが、その後closeChannelを呼んでも呼ばなくても、何かに引っかかって終了してくれない
     puts "[rmq_collector] > closing channel... exiting.\n"
-    #rcol.closeChannel
+    rcol.closeChannel
     exit
   end
   puts "[rmq_collector] > continue...\n"
