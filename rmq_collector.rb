@@ -353,4 +353,4 @@ Signal.trap(:INT) {
 
 rcol = RmqCollector.new
 rcol.doCollect
-
+rcol.closeChannel
