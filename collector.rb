@@ -118,9 +118,10 @@ rescue => ex
 end
 
 #### ログインしてticket取得
-puts "[login] nicolive_antenna"
+puts "[login] NEW nicoalert ..."
 begin
-  agent.post('https://secure.nicovideo.jp/secure/login?site=nicolive_antenna', {:mail => login_mail, :password => login_password})
+  #agent.post('https://secure.nicovideo.jp/secure/login?site=nicolive_antenna', {:mail => login_mail, :password => login_password})
+  agent.post('https://secure.nicovideo.jp/secure/login?site=nicoalert', {:mail => login_mail, :password => login_password})
 rescue Mechanize::ResponseCodeError => rce
   abort "ログインエラー: #{rce.response_code}\n"
 rescue => ex
@@ -135,10 +136,13 @@ if agent.page.at("//nicovideo_user_response/attribute::status").text !~ /ok/ the
   abort "ログインエラー(002)\n"
 end
 ticketstr = agent.page.at("//ticket").text
+puts "[login] NEW nicoalert OK."
 
 #### getalertstatus まずはアラートサーバのIP、ポートをもらってくる
+print "[getalertstatus] NEW getalertstatus ...\n"
 begin
-  agent.post('http://live.nicovideo.jp/api/getalertstatus', {:ticket => ticketstr})
+  #agent.post('http://live.nicovideo.jp/api/getalertstatus', {:ticket => ticketstr})
+  agent.post('http://alert.nicovideo.jp/front/getalertstatus', {:ticket => ticketstr})
 rescue Mechanize::ResponseCodeError => rce
   abort "getalertstatusエラー: #{rce.response_code}\n"
 rescue => ex
@@ -152,14 +156,26 @@ if agent.page.at("//getalertstatus/attribute::status").text !~ /ok/ then
   abort "getalertstatusエラー(004)\n"
 end
 
-agent.page.search("//community_id").each {|ele|
-  mycommlist.push ele.text
-}
+# agent.page.search("//community_id").each {|ele|
+#   mycommlist.push ele.text
+# }
 
-print "[getalertstatus] OK\n"
+print "[getalertstatus] NEW getalertstatus OK\n"
+
 alertserver = agent.page.at("/getalertstatus/ms/addr").text
 alertport = agent.page.at("/getalertstatus/ms/port").text
-alertthread = agent.page.at("/getalertstatus/ms/thread").text
+
+# threadの場所が変わっている
+#alertthread = agent.page.at("/getalertstatus/ms/thread").text
+agent.page.search("//getalertstatus/services/service").each {|ele|
+  serviceid = ele.at("id").text
+  servicethread = ele.at("thread").text
+  print "#{serviceid} #{servicethread}"
+  if serviceid = "" then
+    alertthread = servicethread
+  end
+}
+abort "force exit"
 print("[getalertstatus] connect to: #{alertserver}:#{alertport} thread=#{alertthread}\n")
 alog.info("getalertstatus alertserver=#{alertserver} alertport=#{alertport} alertthread=#{alertthread}");
 
