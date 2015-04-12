@@ -155,8 +155,8 @@ if agent.page.at("//getalertstatus/attribute::status").text !~ /ok/ then
   p agent.page.body
   abort "getalertstatusエラー(004)\n"
 end
-user_id = agent.page.at("/getalertstatus/user_id")
-user_hash = agent.page.at("/getalertstatus/user_hash")
+user_id = agent.page.at("/getalertstatus/user_id").text
+user_hash = agent.page.at("/getalertstatus/user_hash").text
 print "[getalertstatus] NEW getalertstatus OK\n"
 
 print "#{user_id} #{user_hash}\n"
