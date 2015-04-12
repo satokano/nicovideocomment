@@ -26,7 +26,7 @@ def xpathtext(xmlnode, path)
   end
 end
 
-puts "[init] loading config..."
+puts "initializing..."
 config = YAML.load_file("config.yaml")
 # === configure
 mycommlist = config["mycommlist"]
@@ -103,6 +103,8 @@ agent.keep_alive = false # 間欠的にAPIリクエストするだけなので�
 agent.open_timeout = 5
 agent.read_timeout = 5
 
+puts "...done"
+
 #### Cookie準備
 print "[cookie_get] https login secure.nicolive.jp\n"
 begin
@@ -138,6 +140,7 @@ end
 ticketstr = agent.page.at("//ticket").text
 puts "[login] NEW nicoalert OK. ticket=#{ticketstr}"
 
+
 #### getalertstatus まずはアラートサーバのIP、ポートをもらってくる
 print "[getalertstatus] NEW getalertstatus ...\n"
 begin
@@ -157,10 +160,6 @@ if agent.page.at("//getalertstatus/attribute::status").text !~ /ok/ then
 end
 user_id = agent.page.at("/getalertstatus/user_id").text
 user_hash = agent.page.at("/getalertstatus/user_hash").text
-print "[getalertstatus] NEW getalertstatus OK\n"
-
-print "#{user_id} #{user_hash}\n"
-
 alertserver = agent.page.at("/getalertstatus/ms/addr").text
 alertport = agent.page.at("/getalertstatus/ms/port").text
 alertthread = ""
@@ -169,16 +168,17 @@ alertthread = ""
 agent.page.search("//getalertstatus/services/service").each {|ele|
   serviceid = ele.at("id").text
   servicethread = ele.at("thread").text
-  print "#{serviceid} #{servicethread}\n"
+  #print "#{serviceid} #{servicethread}\n"
   # live 1000000001, video 1000000002, seiga 1000000003 のはず。2015/04
   if serviceid == "live" then
     alertthread = servicethread
   end
 }
-print "[getalertstatus] NEW getalertstatus OK\n"
+print "[getalertstatus] NEW getalertstatus OK. user_id=#{user_id} user_hash=#{user_hash} alertthread=#{alertthread}\n"
 
+
+#### コミュニティリスト取得
 print "[getcommunitylist] NEW getcommunitylist ...\n"
-# communitylist取得
 agent.post('http://alert.nicovideo.jp/front/getcommunitylist', {:user_id => user_id, :user_hash => user_hash})
 p agent.page.body
 # agent.page.search("//community_id").each {|ele|
@@ -186,10 +186,10 @@ p agent.page.body
 # }
 print "[getalertstatus] NEW getcommunitylist OK\n"
 
-print("[ALERTSERVER] connect to: #{alertserver}:#{alertport} thread=#{alertthread}\n")
-alog.info("getalertstatus alertserver=#{alertserver} alertport=#{alertport} alertthread=#{alertthread}");
 
 #### アラートサーバへの接続
+print("[ALERTSERVER] connect to: #{alertserver}:#{alertport} thread=#{alertthread}\n")
+alog.info("getalertstatus alertserver=#{alertserver} alertport=#{alertport} alertthread=#{alertthread}");
 begin
   sock = TCPSocket.open(alertserver, alertport)
   sock.setsockopt(Socket::SOL_SOCKET, Socket::SO_REUSEADDR, true)
