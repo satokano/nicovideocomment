@@ -136,7 +136,7 @@ if agent.page.at("//nicovideo_user_response/attribute::status").text !~ /ok/ the
   abort "ログインエラー(002)\n"
 end
 ticketstr = agent.page.at("//ticket").text
-puts "[login] NEW nicoalert OK."
+puts "[login] NEW nicoalert OK. ticket=#{ticketstr}"
 
 #### getalertstatus まずはアラートサーバのIP、ポートをもらってくる
 print "[getalertstatus] NEW getalertstatus ...\n"
@@ -155,12 +155,16 @@ if agent.page.at("//getalertstatus/attribute::status").text !~ /ok/ then
   p agent.page.body
   abort "getalertstatusエラー(004)\n"
 end
+user_id = agent.page.at("/getalertstatus/user_id")
+user_hash = agent.page.at("/getalertstatus/user_hash")
+print "[getalertstatus] NEW getalertstatus OK\n"
 
 # agent.page.search("//community_id").each {|ele|
 #   mycommlist.push ele.text
 # }
 
-print "[getalertstatus] NEW getalertstatus OK\n"
+agent.post('http://alert.nicovideo.jp/front/getcommunitylist', {:user_id => user_id, :user_hash => user_hash})
+p agent.page.body
 
 alertserver = agent.page.at("/getalertstatus/ms/addr").text
 alertport = agent.page.at("/getalertstatus/ms/port").text
