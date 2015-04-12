@@ -164,7 +164,7 @@ print "[getalertstatus] NEW getalertstatus OK\n"
 
 alertserver = agent.page.at("/getalertstatus/ms/addr").text
 alertport = agent.page.at("/getalertstatus/ms/port").text
-
+alertthread = ""
 # threadの場所が変わっている
 #alertthread = agent.page.at("/getalertstatus/ms/thread").text
 agent.page.search("//getalertstatus/services/service").each {|ele|
