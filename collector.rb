@@ -159,6 +159,8 @@ user_id = agent.page.at("/getalertstatus/user_id")
 user_hash = agent.page.at("/getalertstatus/user_hash")
 print "[getalertstatus] NEW getalertstatus OK\n"
 
+print "#{user_id} #{user_hash}\n"
+
 # agent.page.search("//community_id").each {|ele|
 #   mycommlist.push ele.text
 # }
