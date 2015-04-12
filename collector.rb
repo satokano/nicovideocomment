@@ -161,13 +161,6 @@ print "[getalertstatus] NEW getalertstatus OK\n"
 
 print "#{user_id} #{user_hash}\n"
 
-# agent.page.search("//community_id").each {|ele|
-#   mycommlist.push ele.text
-# }
-
-agent.post('http://alert.nicovideo.jp/front/getcommunitylist', {:user_id => user_id, :user_hash => user_hash})
-p agent.page.body
-
 alertserver = agent.page.at("/getalertstatus/ms/addr").text
 alertport = agent.page.at("/getalertstatus/ms/port").text
 alertthread = ""
@@ -182,8 +175,18 @@ agent.page.search("//getalertstatus/services/service").each {|ele|
     alertthread = servicethread
   end
 }
+print "[getalertstatus] NEW getalertstatus OK\n"
 
-print("[getalertstatus] connect to: #{alertserver}:#{alertport} thread=#{alertthread}\n")
+print "[getcommunitylist] NEW getcommunitylist ...\n"
+# communitylist取得
+agent.post('http://alert.nicovideo.jp/front/getcommunitylist', {:user_id => user_id, :user_hash => user_hash})
+p agent.page.body
+# agent.page.search("//community_id").each {|ele|
+#   mycommlist.push ele.text
+# }
+print "[getalertstatus] NEW getcommunitylist OK\n"
+
+print("[ALERTSERVER] connect to: #{alertserver}:#{alertport} thread=#{alertthread}\n")
 alog.info("getalertstatus alertserver=#{alertserver} alertport=#{alertport} alertthread=#{alertthread}");
 
 #### アラートサーバへの接続
