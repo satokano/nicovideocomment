@@ -170,12 +170,13 @@ alertport = agent.page.at("/getalertstatus/ms/port").text
 agent.page.search("//getalertstatus/services/service").each {|ele|
   serviceid = ele.at("id").text
   servicethread = ele.at("thread").text
-  print "#{serviceid} #{servicethread}"
-  if serviceid = "" then
+  print "#{serviceid} #{servicethread}\n"
+  # live 1000000001, video 1000000002, seiga 1000000003 のはず。2015/04
+  if serviceid == "live" then
     alertthread = servicethread
   end
 }
-abort "force exit"
+
 print("[getalertstatus] connect to: #{alertserver}:#{alertport} thread=#{alertthread}\n")
 alog.info("getalertstatus alertserver=#{alertserver} alertport=#{alertport} alertthread=#{alertthread}");
 
