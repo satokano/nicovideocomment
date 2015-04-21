@@ -200,7 +200,7 @@ rescue => ex
   abort "alertserver TCPSocket open error"
 end
 
-sock.print "<thread thread=\"#{alertthread}\" version=\"20061206\" res_from=\"-1\">\0"
+sock.print "<thread thread=\"#{alertthread}\" version=\"20061206\" res_from=\"-1\" />\0"
 sock.each("\0") do |line|
   liveid = ""
   communityid = ""
