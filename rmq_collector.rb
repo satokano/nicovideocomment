@@ -286,6 +286,7 @@ class RmqCollector
       # subscribeからの戻りは delivery_info, properties, bodyの3つなのか、metadata, bodyの2つなのか？
       # どうも2つで十分で、metadataから全部取れるっぽい。
       # http://rubybunny.info/articles/queues.html#blocking_or_nonblocking_behavior
+      # prefetch=1、かつ、:manual_ack => trueにしてackを返すようにすると、1個ずつ消費しているように見える
       @count = 0
       @rmqconsumer = rmqqueue.subscribe(:manual_ack => true) do |metadata, body|
         puts "queue count: #{rmqqueue.message_count}\n"
@@ -304,7 +305,6 @@ class RmqCollector
     rescue => exception
       puts "[doCollect] subscribe error: #{exception}\n"
     end
-    # subscribeで:block => trueを渡さなかったとき、メインスレッドは即endを超えてこの下へ進む。
 
     puts "#{rmqqueue.message_count}\n"
     puts "[doCollect] RabbitMQ queue #{@rmq_routing_key} subscribe(main thread) end.\n"
