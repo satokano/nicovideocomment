@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 fullpath=`readlink -f $0`
 binpath=`dirname $fullpath`
