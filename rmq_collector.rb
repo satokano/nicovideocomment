@@ -344,14 +344,11 @@ end
 # JRuby固有の事情
 # https://gist.github.com/hiremaga/320008
 Signal.trap(:INT) {
-  puts Thread.list.join("\n")
+  #puts Thread.list.join("\n")
 
   response = Readline.readline("[rmq_collector] > shutdown?: [y/n] ")
   if response =~ /y/i then
-    # このコメントまでは表示されるが、その後closeChannelを呼んでも呼ばなくても、何かに引っかかって終了してくれない
-    puts "[rmq_collector] > closing channel... exiting.\n"
-    #rcol.closeChannel
-    #exit
+    puts "[rmq_collector] > raise Interrupt...\n"
     raise Interrupt
   end
   puts "[rmq_collector] > continue...\n"
@@ -361,6 +358,8 @@ rcol = RmqCollector.new
 begin
   rcol.doCollect
   sleep 10
+rescue Interrupt
+  puts "interrupted. (after signal handler)\n"
 ensure
   puts "[main] ensure clause...\n"
   rcol.closeChannel
