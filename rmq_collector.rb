@@ -339,6 +339,10 @@ end
 
 # rubyのシグナルハンドラでは、特にsignal-safeのような定義はない
 # http://comments.gmane.org/gmane.comp.lang.ruby.japanese/8076
+# http://stackoverflow.com/questions/2089421/capturing-ctrl-c-in-ruby
+# http://qiita.com/kasei-san/items/75ad2bb384fdb7e05941
+# JRuby固有の事情
+# https://gist.github.com/hiremaga/320008
 Signal.trap(:INT) {
   puts Thread.list.join("\n")
 
@@ -346,13 +350,18 @@ Signal.trap(:INT) {
   if response =~ /y/i then
     # このコメントまでは表示されるが、その後closeChannelを呼んでも呼ばなくても、何かに引っかかって終了してくれない
     puts "[rmq_collector] > closing channel... exiting.\n"
-    rcol.closeChannel
-    # exit
+    #rcol.closeChannel
+    #exit
+    raise Interrupt
   end
   puts "[rmq_collector] > continue...\n"
 }
 
 rcol = RmqCollector.new
-rcol.doCollect
-sleep 10
-rcol.closeChannel
+begin
+  rcol.doCollect
+  sleep 10
+ensure
+  puts "[main] ensure clause...\n"
+  rcol.closeChannel
+end
