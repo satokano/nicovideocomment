@@ -357,11 +357,15 @@ Signal.trap(:INT) {
 
 rcol = RmqCollector.new
 begin
+  puts "[main] start doCollect\n"
   rcol.doCollect
-  sleep 10
+  puts "[main] end doCollect\n"
+  #sleep 10
 rescue Interrupt
   puts "interrupted. (after signal handler)\n"
 ensure
-  puts "[main] ensure clause...\n"
+  puts "[main] ensure clause. closeChannel...\n"
   rcol.closeChannel
 end
+
+puts "[main] EXIT\n"
