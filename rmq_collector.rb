@@ -21,6 +21,7 @@ require 'readline'
 
 # - キューの中身が空の場合にも、subscribeのまま待ち続けて欲しいが、抜けてしまっている。
 # - Signal.trap(:INT)でトラップしたあとexitまで行ってるはずなのに、終わってくれない。何かスレッドの内部終了処理みたいなので引っかかってる？
+#   - たぶんこれは解決。JRuby固有のシグナル処理の問題。throw Interruptしないといけなかった。
 # - set_encodingってもっとキレイな対応策はないのか？
 class RmqCollector
 
