@@ -20,6 +20,9 @@ require 'celluloid'
 require 'readline'
 
 # - キューの中身が空の場合にも、subscribeのまま待ち続けて欲しいが、抜けてしまっている。
+#   - Consumers last as long as the channel that they were declared on, or until the client cancels them (unsubscribes).
+#     と書いてるので、キャンセルしない限り待ち続けるはず。抜けてしまっているのは意図せずキャンセルしてしまっているのでは。
+#   - subscribeの:blockをtrueにしたときとfalseにしたときで動きが違う気がする。
 # - Signal.trap(:INT)でトラップしたあとexitまで行ってるはずなのに、終わってくれない。何かスレッドの内部終了処理みたいなので引っかかってる？
 #   - たぶんこれは解決。JRuby固有のシグナル処理の問題。throw Interruptしないといけなかった。
 # - set_encodingってもっとキレイな対応策はないのか？
