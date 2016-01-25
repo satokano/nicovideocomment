@@ -3,6 +3,8 @@
 
 コメントを収集します。collector.rbで収集したものをメッセージキューにキューイングしているのであとは好きなように・・・。
 
+ちょっとすっぱり諦めてJRuby9000に特化する方向にする。
+
 [![Build Status](https://travis-ci.org/satokano/nicovideocomment.png)](https://travis-ci.org/satokano/nicovideocomment)
 [![Code Climate](https://codeclimate.com/github/satokano/nicovideocomment.png)](https://codeclimate.com/github/satokano/nicovideocomment)
 [![Test Coverage](https://codeclimate.com/github/satokano/nicovideocomment/badges/coverage.svg)](https://codeclimate.com/github/satokano/nicovideocomment)
