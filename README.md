@@ -61,13 +61,13 @@ jruby, bundlerを使う場合で、以下の通り。（bundle環境下って「
 動作確認環境
 ------------
 
-手元では主にLinux、ときどきFreeBSDで動作確認しています。Rubyは最近はもっぱらJRuby1.7を使っています。Travis CIでは（bundle checkしかテストしてませんが）rvm 2.1.1, 2.1.0, 2.0.0, 1.9.3, 1.9.2, JRuby 1.9modeを指定して確認しています。
+手元では主にLinux、ときどきFreeBSDで動作確認しています。Rubyは最近はJRuby9000系しか使っていません。Travis CIでもjruby-9.0.x.xを指定して確認しています。
 
 - あとでRabbitMQとbunnyのバージョンを書く
 
 License
 -------
-Copyright (c) 2011-2014 Satoshi OKANO. Distributed under the MIT License. See LICENSE.txt for further details.
+Copyright (c) 2011-2016 Satoshi OKANO. Distributed under the MIT License. See LICENSE.txt for further details.
 
 2011/11/30
 
