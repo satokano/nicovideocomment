@@ -1,9 +1,9 @@
 ニコニコ生放送コメント収集ツール
 ==================================================
 
-コメントを収集します。collector.rbで収集したものをメッセージキューにキューイングしているのであとは好きなように・・・。
+コメントを収集します。rmq_collector.rbで収集したものをメッセージキュー（Rabbit MQ）にキューイングし、あとは好きなように処理するという考えです。
 
-ちょっとすっぱり諦めてJRuby9000に特化する方向にする。
+マルチスレッド回りの動作のため、JRuby9000に特化する方針にしています。
 
 [![Build Status](https://travis-ci.org/satokano/nicovideocomment.png)](https://travis-ci.org/satokano/nicovideocomment)
 [![Code Climate](https://codeclimate.com/github/satokano/nicovideocomment.png)](https://codeclimate.com/github/satokano/nicovideocomment)
@@ -18,8 +18,8 @@
 設定
 --------
 
-- config.yaml.sampleをconfig.yamlにリネーム。内容は適宜編集すること。
-- いまのところ、大量にTCPコネクションを消費する実装にしているので、ulimitのopen filesの値は数千～1万程度にしておくこと。
+- config.yaml.sampleをconfig.yamlにリネームして使用してください。内容は適宜編集してください。
+- 大量にTCPコネクションを消費する書き方ですがこれをCelluloid::IOでなんとかして参りたい。ulimitのopen filesの値は数千～1万程度にしてもよいかも。
 
 
 起動
@@ -61,7 +61,7 @@ jruby, bundlerを使う場合で、以下の通り。（bundle環境下って「
 動作確認環境
 ------------
 
-手元では主にLinux、ときどきFreeBSDで動作確認しています。Rubyは最近はJRuby9000系しか使っていません。Travis CIでもjruby-9.0.x.xを指定して確認しています。
+手元では主にLinux（CentOS6）で動作確認しています。まれにFreeBSDを使っていることもあります。RubyはJRuby9000系しか使っていません。Travis CIでもjruby-9.0.x.xを指定して確認しています。Javaは8系を使っています。
 
 - あとでRabbitMQとbunnyのバージョンを書く
 
