@@ -365,6 +365,7 @@ begin
   puts "[main] start doCollect\n"
   rcol.doCollect
   puts "[main] end doCollect\n"
+  puts "[main] waiting for new RabbitMQ Message...\n"
   sleep
 rescue Interrupt
   puts "interrupted. (after signal handler)\n"
