@@ -18,9 +18,13 @@ GEM
       timers (>= 4.1.1)
     celluloid-fsm (0.20.5)
       timers (>= 4.1.1)
+    celluloid-io (0.17.3)
+      celluloid (>= 0.17.2)
+      nio4r (>= 1.1)
+      timers (>= 4.1.1)
     celluloid-pool (0.20.5)
       timers (>= 4.1.1)
-    celluloid-supervision (0.20.5)
+    celluloid-supervision (0.20.6)
       timers (>= 4.1.1)
     codeclimate-test-reporter (0.4.8)
       simplecov (>= 0.7.1, < 1.0.0)
@@ -28,12 +32,7 @@ GEM
     docile (1.1.5)
     domain_name (0.5.25)
       unf (>= 0.0.5, < 1.0.0)
-    ffi (1.9.10-java)
-    ffi-rzmq (2.0.4)
-      ffi-rzmq-core (>= 1.0.1)
-    ffi-rzmq-core (1.0.4)
-      ffi (~> 1.9)
-    hitimes (1.2.3-java)
+    hitimes (1.2.4-java)
     http-cookie (1.0.2)
       domain_name (~> 0.5)
     json (1.8.3-java)
@@ -52,6 +51,7 @@ GEM
       bson (~> 4.0)
     net-http-digest_auth (1.4)
     net-http-persistent (2.9.4)
+    nio4r (1.2.1-java)
     nokogiri (1.6.7.2-java)
     ntlm-http (0.1.1)
     rake (10.5.0)
@@ -85,9 +85,8 @@ DEPENDENCIES
   bson
   bson_ext
   bunny
-  celluloid
+  celluloid-io
   codeclimate-test-reporter
-  ffi-rzmq
   je
   json
   march_hare

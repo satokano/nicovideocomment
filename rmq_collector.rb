@@ -12,11 +12,12 @@ require 'mechanize'
 require 'kconv'
 require 'logger'
 require 'json'
-require 'socket'
-require 'thread'
+#require 'socket'
+#require 'thread'
 require 'yaml'
 require 'march_hare'
-require 'celluloid'
+require 'celluloid/current'
+require 'celluloid/io'
 require 'readline'
 
 # - キューの中身が空の場合にも、subscribeのまま待ち続けて欲しいが、抜けてしまっている。
@@ -118,6 +119,7 @@ class RmqCollector
 
 
   def doCollect_child(liveid)
+    inlude Celluloid::IO
     puts "[doCollect_child] start: #{liveid}\n"
 
     #### getplayerstatusでコメントサーバのIP,port,threadidを取ってくる

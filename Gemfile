@@ -13,10 +13,9 @@ gem "json"
 gem "mechanize"
 gem "mongo"
 gem "nokogiri"
-gem "ffi-rzmq"
 gem "bunny"
 gem "march_hare"
-gem "celluloid"
+gem "celluloid-io"
 
 group :test do
   gem "rake"
