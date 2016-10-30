@@ -3,7 +3,7 @@
 #
 # = ニコニコ生放送のコメントを収集する
 # Author:: Satoshi OKANO
-# Copyright:: Copyright 2011-2014 Satoshi OKANO
+# Copyright:: Copyright 2011-2016 Satoshi OKANO
 # License:: MIT
 #
 
@@ -20,9 +20,11 @@ require 'celluloid'
 require 'readline'
 
 # - キューの中身が空の場合にも、subscribeのまま待ち続けて欲しいが、抜けてしまっている。
+#   - 正確には、抜けると言うより、subscribeはメッセージが到着したときにそれをハンドルするメソッドを登録するだけで
+#     ハンドルする処理自体は非同期に呼ばれる。キューが空の時も実は接続は生きている。プログラム本体が終わらないようにしておけばよいだけ。
 #   - Consumers last as long as the channel that they were declared on, or until the client cancels them (unsubscribes).
-#     と書いてるので、キャンセルしない限り待ち続けるはず。抜けてしまっているのは意図せずキャンセルしてしまっているのでは。
-#   - subscribeの:blockをtrueにしたときとfalseにしたときで動きが違う気がする。
+#     と書いてるので、キャンセルしない限り待ち続けるはず。
+#   - March_Hareのマニュアルにあるとおり、subscribeの:blockをtrueにしたときとfalseにしたときで動きが違う。
 # - Signal.trap(:INT)でトラップしたあとexitまで行ってるはずなのに、終わってくれない。何かスレッドの内部終了処理みたいなので引っかかってる？
 #   - たぶんこれは解決。JRuby固有のシグナル処理の問題。throw Interruptしないといけなかった。
 # - set_encodingってもっとキレイな対応策はないのか？
@@ -363,7 +365,7 @@ begin
   puts "[main] start doCollect\n"
   rcol.doCollect
   puts "[main] end doCollect\n"
-  #sleep 10
+  sleep
 rescue Interrupt
   puts "interrupted. (after signal handler)\n"
 ensure
