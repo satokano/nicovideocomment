@@ -2,10 +2,12 @@
 # 
 # = ニコニコ生放送 ユーザ生（recent）のRSSを読み込んで内容を表示、RabbitMQにpublishする
 # Author:: Satoshi OKANO
-# Copyright:: Copyright 2011-2015 Satoshi OKANO
+# Copyright:: Copyright 2011-2018 Satoshi OKANO
 # License:: MIT
 
 require 'rubygems'
+require 'bundler/setup'
+Bundler.require(:default)
 require 'mechanize'
 require 'march_hare'
 
@@ -57,20 +59,7 @@ class RssScraper
   end
 
   def doScrape()
-    #### Cookie準備。RSSはログインしなくても取れるようだが。。。
-    print "[cookie_get] https login secure.nicolive.jp\n"
-    begin
-      @agent.post('https://secure.nicovideo.jp/secure/login?site=nicolive', {:next_url => "", :mail => @login_mail, :password => @login_password})
-    rescue Mechanize::ResponseCodeError => rce
-      puts "ログインエラー: #{rce.response_code}\n"
-      p @agent.page
-      abort
-    rescue => ex
-      puts "ログインエラー: #{ex.to_s}\n"
-      puts ex.backtrace
-      abort
-    end
-
+    #### RSSはログインしなくても取れる。
     begin
       @agent.get("http://live.nicovideo.jp/recent/rss")
     rescue Mechanize::ResponseCodeError => rce
