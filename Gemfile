@@ -9,7 +9,7 @@ platform :jruby do
   gem "bson"
 end
 
-gem "json"
+gem "json", ">= 2.3.0"
 gem "mechanize"
 gem "mongo"
 gem "nokogiri"
@@ -20,5 +20,5 @@ gem "celluloid-io"
 group :test do
   gem "rake"
   gem "rspec"
-  gem "codeclimate-test-reporter", require: nil
+  gem "codeclimate-test-reporter", ">= 0.4.8", require: nil
 end
