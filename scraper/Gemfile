@@ -1,4 +1,4 @@
 source "https://rubygems.org"
 
-gem "mechanize"
+gem "mechanize", ">= 2.7.4"
 gem "march_hare"
