@@ -10,7 +10,7 @@ platform :jruby do
 end
 
 gem "json", ">= 2.3.0"
-gem "mechanize"
+gem "mechanize", ">= 2.8.5"
 gem "mongo"
 gem "nokogiri"
 gem "bunny"
