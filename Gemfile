@@ -12,7 +12,7 @@ end
 gem "json", ">= 2.3.0"
 gem "mechanize"
 gem "mongo"
-gem "nokogiri"
+gem "nokogiri", ">= 1.10.5"
 gem "bunny"
 gem "march_hare"
 gem "celluloid-io"
