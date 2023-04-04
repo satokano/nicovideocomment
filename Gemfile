@@ -10,15 +10,15 @@ platform :jruby do
 end
 
 gem "json", ">= 2.3.0"
-gem "mechanize"
+gem "mechanize", ">= 2.8.5"
 gem "mongo"
-gem "nokogiri"
+gem "nokogiri", ">= 1.13.9"
 gem "bunny"
 gem "march_hare"
 gem "celluloid-io"
 
 group :test do
-  gem "rake"
+  gem "rake", ">= 12.3.3"
   gem "rspec"
   gem "codeclimate-test-reporter", ">= 0.4.8", require: nil
 end
